@@ -12,7 +12,7 @@ import urllib.request
 import urllib.parse as urlparse_lib
 
 # Config (Railway environment variables)
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '8033290671:AAF4QdGB6AsGQDbnYXxUpXakcsb9aAeyW6M')
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '8147965705:AAEcP0TEzq2G8DYW4INCD2wrH_0yki8Fjx0')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '5874850928')
 
 # Storage
