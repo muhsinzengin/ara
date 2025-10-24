@@ -150,6 +150,34 @@ class SignalingServer:
                 call_recordings_ws[call_id] = recording_data
                 logger.info(f"Recording saved for call {call_id}")
 
+        elif msg_type == 'transfer_call':
+            # Transfer call to another admin
+            call_id = data.get('call_id')
+            target_admin_id = data.get('target_admin_id')
+            if call_id and call_id in call_states:
+                # Update call state
+                call_states[call_id]['status'] = 'transferring'
+                call_states[call_id]['transferred_from'] = data.get('from_admin_id')
+                call_states[call_id]['transferred_to'] = target_admin_id
+
+                # Notify target admin
+                transfer_message = {
+                    'type': 'call_transfer',
+                    'call_id': call_id,
+                    'customer_name': call_states[call_id].get('customer_name', 'Unknown'),
+                    'client_id': call_states[call_id].get('client_id'),
+                    'from_admin_id': data.get('from_admin_id')
+                }
+
+                # Send to all admins (target admin will handle it)
+                for admin_ws in admin_connections:
+                    try:
+                        await admin_ws.send(json.dumps(transfer_message))
+                    except Exception as e:
+                        logger.error(f"Failed to notify admin about transfer: {e}")
+
+                logger.info(f"Call {call_id} transferred to admin {target_admin_id}")
+
     async def handle_client_message(self, websocket: websockets.WebSocketServerProtocol, client_id: str, data: Dict):
         """Handle messages from client"""
         msg_type = data.get('type')
@@ -161,6 +189,7 @@ class SignalingServer:
             if call_id:
                 call_states[call_id] = {
                     'client_id': client_id,
+                    'customer_name': data.get('customer_name', 'Unknown'),
                     'status': 'waiting',
                     'timestamp': datetime.now().isoformat()
                 }

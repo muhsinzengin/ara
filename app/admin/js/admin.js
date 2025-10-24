@@ -53,11 +53,18 @@ const els = {
     proximitySensorBtn: document.getElementById('audioSettingsBtn'),
     endBtn: document.getElementById('endBtn'),
     fullscreenBtn: document.getElementById('fullscreenBtn'),
-    
+    transferBtn: document.getElementById('transferBtn'),
+
     incomingCallNotification: document.getElementById('incomingCallNotification'),
     incomingCallerName: document.getElementById('incomingCallerName'),
     acceptCallBtn: document.getElementById('acceptCallBtn'),
-    rejectCallBtn: document.getElementById('rejectCallBtn')
+    rejectCallBtn: document.getElementById('rejectCallBtn'),
+
+    transferModal: document.getElementById('transferModal'),
+    transferModalClose: document.getElementById('transferModalClose'),
+    adminSelect: document.getElementById('adminSelect'),
+    transferConfirmBtn: document.getElementById('transferConfirmBtn'),
+    transferCancelBtn: document.getElementById('transferCancelBtn')
 };
 
 // ========== OTP FONKSÄ°YONLARI ==========
@@ -1028,6 +1035,12 @@ els.proximitySensorBtn.addEventListener('click', toggleProximitySensor);
 els.endBtn.addEventListener('click', endCall);
 els.fullscreenBtn.addEventListener('click', toggleFullscreen);
 
+// Transfer modal event listeners
+els.transferBtn.addEventListener('click', showTransferModal);
+els.transferModalClose.addEventListener('click', hideTransferModal);
+els.transferCancelBtn.addEventListener('click', hideTransferModal);
+els.transferConfirmBtn.addEventListener('click', confirmTransferCall);
+
 // Fullscreen change listeners (cross-browser)
 const fullscreenEvents = ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'];
 fullscreenEvents.forEach(event => {
@@ -1097,7 +1110,86 @@ window.callUser = async function(callId, customerName) {
     }
 };
 
-console.log('âœ… OperatÃ¶r Panel HazÄ±r');
+// Transfer modal functions
+function showTransferModal() {
+    if (!state.currentCallId) {
+        notify.warning('Aktif Görüşme Yok', 'Transfer etmek için aktif bir görüşme olmalı');
+        return;
+    }
+
+    // Load available admins
+    loadAvailableAdmins();
+    els.transferModal.classList.remove('hidden');
+}
+
+function hideTransferModal() {
+    els.transferModal.classList.add('hidden');
+    els.adminSelect.value = '';
+}
+
+async function loadAvailableAdmins() {
+    try {
+        // For now, we'll simulate admin list - in real implementation, this would come from backend
+        const admins = [
+            { id: 'admin1', name: 'Admin 1' },
+            { id: 'admin2', name: 'Admin 2' },
+            { id: 'admin3', name: 'Admin 3' }
+        ];
+
+        els.adminSelect.innerHTML = '<option value="">Admin seçin...</option>';
+        admins.forEach(admin => {
+            const option = document.createElement('option');
+            option.value = admin.id;
+            option.textContent = admin.name;
+            els.adminSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Load admins error:', error);
+        notify.error('Hata', 'Admin listesi yüklenirken hata oluştu');
+    }
+}
+
+async function confirmTransferCall() {
+    const targetAdminId = els.adminSelect.value;
+    if (!targetAdminId) {
+        notify.warning('Admin Seçilmedi', 'Lütfen transfer edilecek admini seçin');
+        return;
+    }
+
+    if (!confirm('Bu görüşmeyi başka bir admin\'e transfer etmek istediğinizden emin misiniz?')) {
+        return;
+    }
+
+    try {
+        // Send transfer request via WebSocket
+        if (window.webrtcClient && typeof window.webrtcClient.transferCall === 'function') {
+            await window.webrtcClient.transferCall(state.currentCallId, targetAdminId);
+        } else {
+            // Fallback: send via HTTP
+            const response = await fetch('/api/transfer-call', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    call_id: state.currentCallId,
+                    target_admin_id: targetAdminId
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                notify.success('Transfer Başarılı', 'Görüşme başka admin\'e transfer edildi');
+                hideTransferModal();
+                // End current call
+                setTimeout(() => endCall(), 2000);
+            } else {
+                throw new Error(data.error || 'Transfer başarısız');
+            }
+        }
+    } catch (error) {
+        console.error('Transfer error:', error);
+        notify.error('Transfer Hatası', 'Görüşme transfer edilemedi');
+    }
+}
 
 // Download recording function
 window.downloadRecording = async function(recordingId) {
@@ -1123,5 +1215,5 @@ window.downloadRecording = async function(recordingId) {
         notify.error('Hata', 'Kayıt indirilirken hata oluştu');
     }
 };
-    </script>
-<script src="/static/js/signaling.js">
+
+console.log('✅ Operatör Panel Hazır');

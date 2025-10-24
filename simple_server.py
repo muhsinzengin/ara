@@ -265,6 +265,55 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 self.send_json({'success': False, 'error': 'Call ID required'})
 
+        elif path == '/api/save-quality-alert':
+            call_id = data.get('call_id')
+            alert = data.get('alert', {})
+
+            if alert:
+                # Kalite uyarılarını kaydet
+                filename = f"quality_alerts/{call_id or 'unknown'}_{alert.get('timestamp', datetime.now().isoformat())}.json"
+                os.makedirs('quality_alerts', exist_ok=True)
+
+                alert_data = {
+                    'call_id': call_id,
+                    'alert': alert,
+                    'server_timestamp': datetime.now().isoformat()
+                }
+
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump(alert_data, f, ensure_ascii=False, indent=2)
+
+                print(f"🔥 Quality alert saved: {filename}")
+                self.send_json({'success': True, 'alert_id': f"{call_id or 'unknown'}_{alert.get('timestamp', datetime.now().isoformat())}"})
+            else:
+                self.send_json({'success': False, 'error': 'Alert data required'})
+
+        elif path == '/api/get-quality-alerts':
+            call_id = data.get('call_id')
+            limit = data.get('limit', 50)
+
+            alerts = []
+            alerts_dir = 'quality_alerts'
+
+            if os.path.exists(alerts_dir):
+                alert_files = sorted(os.listdir(alerts_dir), reverse=True)[:limit]
+
+                for filename in alert_files:
+                    if filename.endswith('.json'):
+                        try:
+                            with open(os.path.join(alerts_dir, filename), 'r', encoding='utf-8') as f:
+                                alert_data = json.load(f)
+
+                                # Belirli call_id için filtrele
+                                if call_id and alert_data.get('call_id') != call_id:
+                                    continue
+
+                                alerts.append(alert_data)
+                        except Exception as e:
+                            print(f"Error reading alert file {filename}: {e}")
+
+            self.send_json({'success': True, 'alerts': alerts})
+
         elif path == '/api/download-call-recording':
             recording_id = data.get('recording_id')
             if recording_id and recording_id in call_recordings:

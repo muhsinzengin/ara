@@ -51,6 +51,9 @@ class WebRTCSignaling {
             case 'call_accepted':
                 this.handleCallAccepted(data);
                 break;
+            case 'call_transfer':
+                this.handleCallTransfer(data);
+                break;
         }
     }
 
@@ -142,6 +145,16 @@ class WebRTCSignaling {
         this.cleanup();
     }
 
+    handleCallTransfer(data) {
+        console.log('👥 Çağrı transfer edildi:', data);
+        // Transfer sonrası cleanup
+        this.cleanup();
+        // UI güncellemesi
+        if (window.handleCallTransfer) {
+            window.handleCallTransfer(data);
+        }
+    }
+
     async startCall(stream) {
         this.localStream = stream;
         if (this.pc && this.localStream) {
@@ -161,6 +174,16 @@ class WebRTCSignaling {
         this.send({
             type: 'hangup',
             call_id: this.callId
+        });
+        this.cleanup();
+    }
+
+    transferCall(targetAdminId) {
+        this.send({
+            type: 'transfer_call',
+            call_id: this.callId,
+            target_admin_id: targetAdminId,
+            from_admin_id: 'admin1' // Geçici olarak sabit, dinamik yapılabilir
         });
         this.cleanup();
     }
@@ -228,11 +251,24 @@ class WebRTCSignaling {
     updateStatsDisplay(stats) {
         const statsEl = document.getElementById('webrtcStats');
         if (statsEl) {
+            // Kalite değerlendirmesi yap
+            const quality = window.qualityMonitor ? window.qualityMonitor.assessQuality(stats) : null;
+
+            const getQualityIndicator = (metric, value) => {
+                if (!quality) return '';
+
+                const qualityLevel = quality[metric];
+                const color = window.qualityMonitor.getQualityColor(qualityLevel);
+                const icon = window.qualityMonitor.getQualityIcon(qualityLevel);
+
+                return `<span style="color: ${color}; margin-left: 5px;">${icon}</span>`;
+            };
+
             statsEl.innerHTML = `
-                <div class="stat-item">📹 Video: ${stats.videoBitrate} kbps</div>
-                <div class="stat-item">🎤 Ses: ${stats.audioBitrate} kbps</div>
-                <div class="stat-item">📊 Kayıp: ${stats.packetsLost}</div>
-                <div class="stat-item">⏱️ Gecikme: ${stats.roundTripTime}ms</div>
+                <div class="stat-item">📹 Video: ${stats.videoBitrate} kbps ${getQualityIndicator('video', stats.videoBitrate)}</div>
+                <div class="stat-item">🎤 Ses: ${stats.audioBitrate} kbps ${getQualityIndicator('audio', stats.audioBitrate)}</div>
+                <div class="stat-item">📊 Kayıp: ${stats.packetsLost} ${getQualityIndicator('network', stats.packetsLost)}</div>
+                <div class="stat-item">⏱️ Gecikme: ${stats.roundTripTime}ms ${getQualityIndicator('network', stats.roundTripTime)}</div>
             `;
         }
         // Store stats for recording

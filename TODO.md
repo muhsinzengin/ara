@@ -23,7 +23,7 @@
 - [x] Çapraz tarayıcı WebRTC uyumluluğunu sağla
 
 ## 📋 Bekleyen Görevler
-- [ ] Çağrı kalitesi izleme ve uyarılar ekle
+- [x] Çağrı kalitesi izleme ve uyarılar ekle
 - [ ] Adminler arası çağrı transferi uygula
 - [ ] Ekran paylaşım özelliği ekle
 - [ ] Çağrı bekleme kuyruğu uygula

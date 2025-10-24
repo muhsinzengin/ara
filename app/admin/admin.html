@@ -112,6 +112,11 @@
             <div id="webrtcStats" class="webrtc-stats">
                 <!-- WebRTC istatistikleri burada gösterilecek -->
             </div>
+
+            <!-- Kalite Uyarı Paneli -->
+            <div id="qualityAlert" class="quality-alert hidden">
+                <!-- Uyarı içeriği dinamik olarak eklenecek -->
+            </div>
         </div>
         
         <div class="controls">
@@ -132,6 +137,9 @@
                     <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
                     <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
                 </svg>
+            </button>
+            <button class="control-btn btn-transfer" id="transferBtn" data-label="Transfer">
+                <span style="font-size: 28px;">👥</span>
             </button>
             <button class="control-btn btn-proximity-sensor" id="audioSettingsBtn" data-label="Yakınlık Sensörü">
                 <span style="font-size: 28px;">👂</span>
@@ -156,8 +164,29 @@
         </div>
     </div>
 
+    <!-- Transfer Modal -->
+    <div id="transferModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Çağrıyı Transfer Et</h3>
+                <span class="modal-close" id="transferModalClose">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Çağrıyı hangi admin'e transfer etmek istiyorsunuz?</p>
+                <select id="adminSelect" class="admin-select">
+                    <option value="">Admin seçin...</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button id="transferConfirmBtn" class="transfer-confirm-btn">Transfer Et</button>
+                <button id="transferCancelBtn" class="transfer-cancel-btn">İptal</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/admin/js/notifications.js"></script>
     <script src="/admin/js/admin.js"></script>
+    <script src="/static/js/quality_monitor.js"></script>
     <script src="/static/js/signaling_pro.js"></script>
 </body>
 </html>
