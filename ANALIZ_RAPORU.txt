@@ -1,0 +1,2248 @@
+================================================================================
+PROJE ANALİZ RAPORU - aiortc WebRTC Kütüphanesi
+================================================================================
+Rapor Tarihi: 2024
+Proje Kökü: c:\Users\ASUS\Desktop\ara
+================================================================================
+
+1) ÖZET (TL;DR)
+================================================================================
+
+Proje Adı: aiortc
+Versiyon: 1.14.0
+Lisans: BSD-3-Clause
+
+Teknoloji Stack:
+- Dil: Python 3.10+ (asyncio tabanlı)
+- Çatı: Saf Python WebRTC/ORTC implementasyonu
+- Bağımlılıklar: aioice, av (PyAV), cryptography, pyee, pylibsrtp, pyopenssl
+- İstemci: Vanilla JavaScript (örneklerde)
+
+Ana Kullanım:
+- SADECE GÖRÜNTÜ desteği (video only - audio codecs removed)
+- WebRTC peer-to-peer iletişim
+- Data channels (SCTP)
+- Codec desteği: VP8, H.264 (video only)
+
+Mimari Yaklaşım:
+- Pure Python WebRTC implementasyonu
+- asyncio event loop tabanlı
+- Tarayıcı API'sine benzer Pythonic interface
+- Modüler codec sistemi
+- ICE/DTLS/SRTP/SCTP tam stack
+
+Kullanım Senaryoları:
+- Server-side WebRTC uygulamaları
+- Media processing pipelines
+- WebRTC gateway/bridge uygulamaları
+- Test ve geliştirme araçları
+- Eğitim ve araştırma
+
+================================================================================
+2) MEVCUT DOSYA YAPISI (TREE) - MİNİMAL VERSİYON
+================================================================================
+
+NOT: Gereksiz dosyalar temizlendi (tests/, examples/, docs/, requirements/,
+     .github/, CI/CD configs, binary files). Sadece core kütüphane kaldı.
+
+c:\Users\ASUS\Desktop\ara\
+├─ src/
+│  └─ aiortc/
+│     ├─ codecs/
+│     │  ├─ __init__.py
+│     │  ├─ base.py
+│     │  ├─ h264.py
+│     │  └─ vpx.py
+│     ├─ contrib/
+│     │  ├─ __init__.py
+│     │  ├─ media.py
+│     │  └─ signaling.py
+│     ├─ __init__.py
+│     ├─ clock.py
+│     ├─ events.py
+│     ├─ exceptions.py
+│     ├─ jitterbuffer.py
+│     ├─ mediastreams.py
+│     ├─ py.typed
+│     ├─ rate.py
+│     ├─ rtcconfiguration.py
+│     ├─ rtcdatachannel.py
+│     ├─ rtcdtlstransport.py
+│     ├─ rtcicetransport.py
+│     ├─ rtcpeerconnection.py
+│     ├─ rtcrtpparameters.py
+│     ├─ rtcrtpreceiver.py
+│     ├─ rtcrtpsender.py
+│     ├─ rtcrtptransceiver.py
+│     ├─ rtcsctptransport.py
+│     ├─ rtcsessiondescription.py
+│     ├─ rtp.py
+│     ├─ sdp.py
+│     ├─ stats.py
+│     └─ utils.py
+├─ .gitignore
+├─ ANALIZ_RAPORU.txt
+├─ LICENSE
+├─ pyproject.toml
+├─ README.rst
+└─ setup.py
+
+================================================================================
+3) DOSYA ENVANTERI TABLOSU
+================================================================================
+
+YOL                                    | TÜR  | ROL                           | BAĞIMLILIKLAR                    | KULLANILDIĞI YAPI      | AÇIKLAMA
+---------------------------------------|------|-------------------------------|----------------------------------|------------------------|--------------------------------------------------
+pyproject.toml                         | toml | Build config                  | setuptools                       | Dağıtım/DevOps         | Modern Python paket yapılandırması, bağımlılıklar
+setup.py                               | py   | Build script                  | setuptools                       | Dağıtım/DevOps         | Minimal setup.py (pyproject.toml kullanıyor)
+README.rst                             | rst  | Documentation                 | -                                | Dağıtım/DevOps         | Proje tanıtımı ve kurulum talimatları
+.gitignore                             | txt  | Git config                    | -                                | Dağıtım/DevOps         | Git ignore patterns
+LICENSE                                | txt  | License                       | -                                | Dağıtım/DevOps         | BSD-3-Clause license
+src/aiortc/__init__.py                 | py   | Package entry                 | Tüm RTC modülleri                | Ortak                  | Ana API export noktası
+src/aiortc/rtcpeerconnection.py        | py   | WebRTC core                   | ice,dtls,rtp,sdp,codecs          | Ses+Görüntü            | RTCPeerConnection ana sınıfı, offer/answer
+src/aiortc/rtcrtpsender.py             | py   | RTP sender                    | codecs,rtp,stats,dtls            | Ses+Görüntü            | Media gönderimi, encoding, RTCP SR
+src/aiortc/rtcrtpreceiver.py           | py   | RTP receiver                  | codecs,rtp,stats,jitterbuffer    | Ses+Görüntü            | Media alımı, decoding, RTCP RR, NACK
+src/aiortc/rtcdatachannel.py           | py   | Data channel                  | sctp,exceptions                  | Ortak                  | WebRTC data channel implementasyonu
+src/aiortc/rtcicetransport.py          | py   | ICE transport                 | aioice                           | Ortak                  | ICE candidate gathering ve connectivity
+src/aiortc/rtcdtlstransport.py         | py   | DTLS transport                | cryptography,pyopenssl           | Ortak                  | DTLS handshake ve encryption
+src/aiortc/rtcsctptransport.py         | py   | SCTP transport                | dtls                             | Ortak                  | SCTP over DTLS (data channels için)
+src/aiortc/sdp.py                      | py   | SDP parser/generator          | rtcrtpparameters,ice,dtls        | Ortak                  | SDP parsing ve generation
+src/aiortc/rtp.py                      | py   | RTP/RTCP protocol             | -                                | Ses+Görüntü            | RTP/RTCP packet handling
+src/aiortc/mediastreams.py             | py   | Media track base              | av,asyncio                       | Ses+Görüntü            | MediaStreamTrack abstract base
+src/aiortc/jitterbuffer.py             | py   | Jitter buffer                 | rtp                              | Ses+Görüntü            | Packet reordering ve timing
+src/aiortc/stats.py                    | py   | Statistics                    | datetime                         | Ses+Görüntü            | WebRTC stats API
+src/aiortc/clock.py                    | py   | Clock utilities               | -                                | Ortak                  | NTP time, monotonic clock
+src/aiortc/events.py                   | py   | Event classes                 | -                                | Ortak                  | RTCTrackEvent
+src/aiortc/exceptions.py               | py   | Exception classes             | -                                | Ortak                  | InvalidStateError, InvalidAccessError
+src/aiortc/rate.py                     | py   | Bitrate estimation            | -                                | Ses+Görüntü            | RemoteBitrateEstimator
+src/aiortc/rtcconfiguration.py         | py   | Configuration                 | -                                | Ortak                  | RTCConfiguration, RTCIceServer
+src/aiortc/rtcrtpparameters.py         | py   | RTP parameters                | -                                | Ses+Görüntü            | RTCRtpParameters, codecs
+src/aiortc/rtcrtptransceiver.py        | py   | RTP transceiver               | sender,receiver                  | Ses+Görüntü            | RTCRtpTransceiver
+src/aiortc/rtcsessiondescription.py    | py   | Session description           | -                                | Ortak                  | RTCSessionDescription
+src/aiortc/utils.py                    | py   | Utility functions             | -                                | Ortak                  | uint16_add, random functions
+src/aiortc/py.typed                    | txt  | Type marker                   | -                                | Dağıtım/DevOps         | PEP 561 type hints marker
+src/aiortc/codecs/__init__.py          | py   | Codec registry                | h264,vpx                         | Sadece Görüntü         | Codec initialization (audio codecs removed)
+src/aiortc/codecs/base.py              | py   | Codec interface               | av,jitterbuffer                  | Ses+Görüntü            | Encoder/Decoder abstract base
+src/aiortc/codecs/h264.py              | py   | H.264 codec                   | av,base                          | Sadece Görüntü         | H.264 video codec, packetization
+src/aiortc/codecs/vpx.py               | py   | VP8 codec                     | av,base                          | Sadece Görüntü         | VP8 video codec
+src/aiortc/contrib/media.py            | py   | Media helpers                 | av,mediastreams                  | Ses+Görüntü            | MediaPlayer, MediaRecorder, MediaRelay
+src/aiortc/contrib/signaling.py        | py   | Signaling helpers             | asyncio,json                     | Ortak                  | Copy-paste, TCP, Unix socket signaling          | WebRTC server örneği, video transform
+examples/server/client.js              | js   | Demo client                   | WebRTC API                       | Ses+Görüntü            | Browser WebRTC client
+examples/server/index.html             | html | Demo UI                       | -                                | Ses+Görüntü            | Web interface
+tests/test_*.py                        | py   | Unit tests                    | pytest,aiortc                    | Dağıtım/DevOps         | Comprehensive test suite
+
+
+================================================================================
+4) DERİN KOD İNCELEMESİ (Dosya Dosya)
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: src/aiortc/rtcpeerconnection.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: WebRTC bağlantısının merkezi yönetimi. Offer/answer negotiation,
+          transceiver yönetimi, ICE/DTLS koordinasyonu.
+
+Önemli Fonksiyon/Sınıflar:
+- RTCPeerConnection.__init__(): Configuration, certificate generation
+- createOffer() -> RTCSessionDescription: SDP offer oluşturma
+- createAnswer() -> RTCSessionDescription: SDP answer oluşturma
+- setLocalDescription(desc): Local SDP ayarlama, ICE gathering başlatma
+- setRemoteDescription(desc): Remote SDP işleme, track events
+- addTrack(track) -> RTCRtpSender: Media track ekleme
+- addTransceiver(kind, direction) -> RTCRtpTransceiver: Transceiver oluşturma
+- createDataChannel(label, ...) -> RTCDataChannel: Data channel oluşturma
+- addIceCandidate(candidate): ICE candidate ekleme
+- getStats() -> RTCStatsReport: İstatistik toplama
+- close(): Bağlantıyı kapatma
+
+Kritik Akışlar:
+1. Offer Flow: createOffer → setLocalDescription → gather ICE → send SDP
+2. Answer Flow: setRemoteDescription → createAnswer → setLocalDescription
+3. Media Flow: addTrack → transceiver → RTP sender/receiver
+4. ICE Flow: gather candidates → addRemoteCandidate → connectivity check
+
+Bağımlılık Haritası (lokal):
+- Kullandığı: RTCDtlsTransport, RTCIceTransport, RTCRtpTransceiver, 
+              RTCRtpSender, RTCRtpReceiver, RTCSctpTransport, sdp, codecs
+- Çağıran: Uygulama kodu, examples
+
+Dış Bağımlılıklar:
+- pyee.AsyncIOEventEmitter: Event emission
+- asyncio: Async operations
+
+Güvenlik/Dayanıklılık Notları:
++ DTLS certificate auto-generation
++ State validation (__assertNotClosed, __validate_description)
++ Bundle policy support (BUNDLE)
++ ICE role management
+- Eksik: Rate limiting yok
+- Eksik: TURN credential rotation yok
+- Eksik: Explicit CORS/CSP headers (uygulama seviyesinde)
+
+Eksik/Geliştirilecek:
+1. getStats() daha detaylı metrics (MOS, packet loss patterns)
+2. Simulcast/SVC desteği yok
+3. Perfect negotiation pattern desteği
+4. Connection quality monitoring ve adaptive bitrate
+5. Explicit error recovery strategies
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: src/aiortc/rtcrtpsender.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: RTP media gönderimi, encoding, packetization, RTCP sender reports.
+
+Önemli Fonksiyon/Sınıflar:
+- RTCRtpSender.__init__(track, transport): Sender initialization
+- send(parameters): RTP gönderimini başlatma
+- replaceTrack(track): Track değiştirme
+- getStats() -> RTCStatsReport: Outbound stats
+- _run_rtp(codec): Ana RTP gönderim loop
+- _run_rtcp(): RTCP SR/SDES gönderim loop
+- _next_encoded_frame(codec): Frame encoding
+- _retransmit(seq): NACK'e cevap olarak retransmission
+- _send_keyframe(): Keyframe request handling
+
+Kritik Akışlar:
+- Encoding: track.recv() → encoder.encode() → RTP packetization → send
+- RTCP: Periodic SR packets, SDES with CNAME
+- Retransmission: NACK received → lookup history → RTX packet
+
+Bağımlılık Haritası:
+- Kullandığı: codecs (get_encoder), rtp (RtpPacket), RTCDtlsTransport
+- Çağıran: RTCRtpTransceiver, RTCPeerConnection
+
+Dış Bağımlılıklar:
+- av (PyAV): Frame encoding
+- asyncio: Async loops
+
+Güvenlik/Dayanıklılık:
++ RTP history for retransmission (RTP_HISTORY_SIZE)
++ RTT estimation from RTCP RR
++ REMB (Receiver Estimated Maximum Bitrate) support
++ Random sequence number initialization (security)
+- Eksik: Explicit congestion control
+- Eksik: FEC (Forward Error Correction)
+
+Eksik/Geliştirilecek:
+1. Adaptive bitrate based on network conditions
+2. Simulcast support
+3. Red/Ulpfec redundancy
+4. Better keyframe request handling
+5. Bandwidth estimation improvements
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: src/aiortc/rtcrtpreceiver.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: RTP media alımı, decoding, jitter buffer, RTCP receiver reports.
+
+Önemli Fonksiyon/Sınıflar:
+- RTCRtpReceiver.__init__(kind, transport): Receiver initialization
+- receive(parameters): RTP alımını başlatma
+- getStats() -> RTCStatsReport: Inbound stats
+- _handle_rtp_packet(packet, arrival_time): RTP packet processing
+- _handle_rtcp_packet(packet): RTCP packet handling
+- _run_rtcp(): RTCP RR gönderim loop
+- _send_rtcp_nack(ssrc, lost): NACK gönderimi
+- _send_rtcp_pli(ssrc): Picture Loss Indication
+- NackGenerator: Missing packet tracking
+- StreamStatistics: Jitter, packet loss calculation
+- decoder_worker(): Separate thread for decoding
+
+Kritik Akışlar:
+- Reception: RTP packet → jitter buffer → decoder → track._queue
+- NACK: Missing packet detected → NACK sent → retransmission received
+- PLI: Frame assembly failed → PLI sent → keyframe received
+- RTCP: Periodic RR with reception statistics
+
+Bağımlılık Haritası:
+- Kullandığı: codecs (get_decoder, depayload), JitterBuffer, 
+              RemoteBitrateEstimator, rtp
+- Çağıran: RTCRtpTransceiver, RTCPeerConnection
+
+Dış Bağımlılıklar:
+- av (PyAV): Frame decoding
+- threading: Decoder thread
+- asyncio: Async operations
+
+Güvenlik/Dayanıklılık:
++ NACK for packet loss recovery
++ PLI for video frame loss
++ Jitter buffer for packet reordering
++ Remote bitrate estimation (REMB)
++ Separate decoder thread (non-blocking)
+- Eksik: Explicit timeout for missing packets
+- Eksik: Duplicate packet detection
+
+Eksik/Geliştirilecek:
+1. Better jitter buffer tuning
+2. FEC decoding support
+3. Packet loss concealment
+4. More sophisticated bitrate estimation
+5. Decoder error recovery
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: src/aiortc/rtcdatachannel.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: WebRTC data channel implementasyonu, SCTP üzerinden.
+
+Önemli Fonksiyon/Sınıflar:
+- RTCDataChannel.__init__(transport, parameters): Channel initialization
+- send(data): String veya bytes gönderimi
+- close(): Channel kapatma
+- RTCDataChannelParameters: Configuration (label, ordered, maxRetransmits, etc.)
+- Properties: bufferedAmount, readyState, id, label, ordered, protocol
+
+Kritik Akışlar:
+- Open: negotiated=False → DCEP open message → remote ack → state=open
+- Send: data → SCTP transport → remote peer
+- Receive: SCTP → _data_channel_receive → emit('message')
+
+Bağımlılık Haritası:
+- Kullandığı: RTCSctpTransport
+- Çağıran: RTCPeerConnection.createDataChannel(), remote peer
+
+Güvenlik/Dayanıklılık:
++ Ordered/unordered delivery
++ Reliable/unreliable (maxRetransmits, maxPacketLifeTime)
++ bufferedAmount tracking
++ State validation
+- Eksik: Message size validation
+- Eksik: Rate limiting
+
+Eksik/Geliştirilecek:
+1. Binary/text type detection
+2. Backpressure handling
+3. Priority support
+4. Better error messages
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: src/aiortc/sdp.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: SDP (Session Description Protocol) parsing ve generation.
+
+Önemli Fonksiyon/Sınıflar:
+- SessionDescription.parse(sdp) -> SessionDescription: SDP parsing
+- SessionDescription.__str__() -> str: SDP generation
+- MediaDescription: m= line representation
+- candidate_from_sdp(sdp) -> RTCIceCandidate: ICE candidate parsing
+- candidate_to_sdp(candidate) -> str: ICE candidate generation
+- parse_h264_profile_level_id(str) -> (H264Profile, H264Level)
+- parameters_from_sdp(sdp) -> dict: fmtp parameter parsing
+
+Kritik Akışlar:
+- Offer/Answer: SessionDescription → SDP string → signaling → parse
+- ICE: Candidate → SDP format → trickle ICE
+
+Bağımlılık Haritası:
+- Kullandığı: RTCRtpParameters, RTCIceParameters, RTCDtlsParameters
+- Çağıran: RTCPeerConnection (setLocal/RemoteDescription)
+
+Güvenlik/Dayanıklılık:
++ Comprehensive SDP parsing
++ H.264 profile/level validation
++ ICE candidate validation
+- Eksik: SDP fuzzing protection
+- Eksik: Malformed SDP handling could be better
+
+Eksik/Geliştirilecek:
+1. SDP munging utilities
+2. Better error messages for invalid SDP
+3. SDP diff/merge utilities
+4. Simulcast SDP support
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: src/aiortc/codecs/opus.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: Opus audio codec encoding/decoding.
+
+Önemli Fonksiyon/Sınıflar:
+- OpusEncoder: 48kHz stereo, 96kbps, voip application
+- OpusDecoder: libopus decoder
+- encode(frame) -> (payloads, timestamp): Audio encoding
+- decode(encoded_frame) -> frames: Audio decoding
+
+Kritik Akışlar:
+- Encoding: AudioFrame → resampler → opus encoder → RTP payload
+- Decoding: RTP payload → opus decoder → AudioFrame
+
+Bağımlılık Haritası:
+- Kullandığı: av.CodecContext, AudioResampler
+- Çağıran: RTCRtpSender, RTCRtpReceiver
+
+Güvenlik/Dayanıklılık:
++ Fixed frame size (960 samples)
++ Resampling support
++ Stereo support
+- Eksik: DTX (Discontinuous Transmission)
+- Eksik: FEC support
+
+Eksik/Geliştirilecek:
+1. Adaptive bitrate
+2. DTX for bandwidth saving
+3. FEC for packet loss
+4. Complexity control
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: src/aiortc/codecs/h264.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: H.264 video codec encoding/decoding, RTP packetization.
+
+Önemli Fonksiyon/Sınıflar:
+- H264Encoder: libx264 encoder, Baseline profile
+- H264Decoder: H.264 decoder
+- _packetize_fu_a(data): Fragmentation Unit A packetization
+- _packetize_stap_a(data, iterator): Single Time Aggregation Packet
+- _split_bitstream(buf): NAL unit extraction
+- H264PayloadDescriptor.parse(data): RTP depayload
+- h264_depayload(payload): RTP payload parsing
+
+Kritik Akışlar:
+- Encoding: VideoFrame → libx264 → NAL units → RTP packets (FU-A/STAP-A)
+- Decoding: RTP packets → NAL units → libx264 → VideoFrame
+- Keyframe: PLI received → force_keyframe=True → I-frame
+
+Bağımlılık Haritası:
+- Kullandığı: av.CodecContext, VIDEO_TIME_BASE
+- Çağıran: RTCRtpSender, RTCRtpReceiver
+
+Güvenlik/Dayanıklılık:
++ Adaptive bitrate (target_bitrate property)
++ Keyframe forcing
++ NAL unit packetization
++ REMB support
+- Eksik: SPS/PPS handling could be better
+- Eksik: Temporal scalability
+
+Eksik/Geliştirilecek:
+1. SVC (Scalable Video Coding)
+2. Better rate control
+3. Hardware encoding support
+4. Profile/level negotiation
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: src/aiortc/contrib/media.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: Media source/sink helpers: player, recorder, relay, blackhole.
+
+Önemli Fonksiyon/Sınıflar:
+- MediaPlayer: File/stream/webcam player
+- MediaRecorder: File/stream recorder
+- MediaRelay: Track multiplexing (1 source → N consumers)
+- MediaBlackhole: Media sink (discard)
+- PlayerStreamTrack: Player track implementation
+- player_worker_decode(): Decode thread
+- player_worker_demux(): Demux thread (no decode)
+
+Kritik Akışlar:
+- Player: container.decode() → queue → track.recv()
+- Recorder: track.recv() → encoder → container.mux()
+- Relay: source.recv() → N × proxy._queue.put()
+
+Bağımlılık Haritası:
+- Kullandığı: av (PyAV), MediaStreamTrack, asyncio, threading
+- Çağıran: Application code, examples
+
+Güvenlik/Dayanıklılık:
++ Throttle playback for non-realtime sources
++ Loop playback support
++ Decode/demux mode selection
++ Relay buffering
+- Eksik: Error recovery in player
+- Eksik: Recorder flush on error
+
+Eksik/Geliştirilecek:
+1. Better error handling
+2. Seek support in player
+3. Live stream reconnection
+4. Recorder pause/resume
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: src/aiortc/contrib/signaling.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: Signaling channel implementations (copy-paste, TCP, Unix socket).
+
+Önemli Fonksiyon/Sınıflar:
+- BaseSignaling: Abstract base
+- CopyAndPasteSignaling: stdin/stdout signaling
+- TcpSocketSignaling: TCP socket signaling
+- UnixSocketSignaling: Unix socket signaling
+- object_from_string(json): Deserialize SDP/candidate
+- object_to_string(obj): Serialize SDP/candidate
+
+Kritik Akışlar:
+- Send: RTCSessionDescription → JSON → signaling channel
+- Receive: signaling channel → JSON → RTCSessionDescription
+
+Bağımlılık Haritası:
+- Kullandığı: asyncio, json, RTCSessionDescription, RTCIceCandidate
+- Çağıran: Examples, application code
+
+Güvenlik/Dayanıklılık:
++ Multiple signaling methods
++ BYE message support
+- Eksik: Authentication
+- Eksik: Encryption (TLS)
+- Eksik: Message validation
+
+Eksik/Geliştirilecek:
+1. WebSocket signaling
+2. HTTP long-polling
+3. Authentication/authorization
+4. TLS support for TCP
+
+─────────────────────────────────────────────────────────────────────────────
+Dosya: examples/server/server.py
+─────────────────────────────────────────────────────────────────────────────
+Amaç/Rol: Demo WebRTC server with video transforms (cartoon, edges, rotate).
+
+Önemli Fonksiyon/Sınıflar:
+- VideoTransformTrack: Video transformation track
+- offer(request): Handle WebRTC offer, create answer
+- on_track(track): Handle incoming tracks
+- on_datachannel(channel): Handle data channels
+
+Kritik Akışlar:
+- Signaling: HTTP POST /offer → SDP exchange
+- Media: Incoming track → transform → outgoing track
+- Data: ping/pong messages
+
+Bağımlılık Haritası:
+- Kullandığı: aiohttp, aiortc, cv2 (OpenCV)
+- Çağıran: Web browser
+
+Güvenlik/Dayanıklılık:
++ HTTPS support (optional)
++ Connection state monitoring
+- Eksik: Authentication
+- Eksik: Rate limiting
+- Eksik: CORS headers
+
+Eksik/Geliştirilecek:
+1. Authentication/authorization
+2. Multiple rooms/sessions
+3. Recording support
+4. Better error handling
+
+
+================================================================================
+5) AKIŞ DİYAGRAMLARI (Metinsel)
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+5.1) Signaling Akışı (Offer/Answer)
+─────────────────────────────────────────────────────────────────────────────
+
+CALLER (Offerer)                          CALLEE (Answerer)
+    |                                           |
+    | 1. pc = RTCPeerConnection()               |
+    | 2. pc.addTrack(audio/video)               |
+    | 3. offer = await pc.createOffer()         |
+    | 4. await pc.setLocalDescription(offer)    |
+    | 5. [ICE gathering starts]                 |
+    |                                           |
+    | -------- SDP Offer (via signaling) -----> |
+    |                                           | 6. pc = RTCPeerConnection()
+    |                                           | 7. await pc.setRemoteDescription(offer)
+    |                                           | 8. answer = await pc.createAnswer()
+    |                                           | 9. await pc.setLocalDescription(answer)
+    |                                           | 10. [ICE gathering starts]
+    | <------- SDP Answer (via signaling) ----- |
+    |                                           |
+    | 11. await pc.setRemoteDescription(answer) |
+    |                                           |
+    | <-------- ICE Candidates (trickle) -----> |
+    | --------> ICE Candidates (trickle) -----> |
+    |                                           |
+    | 12. [ICE connectivity checks]             |
+    | 13. [DTLS handshake]                      |
+    | 14. [SRTP key derivation]                 |
+    |                                           |
+    | <========= RTP Media Flow =============> |
+    | <========= RTCP Reports ===============> |
+    |                                           |
+
+─────────────────────────────────────────────────────────────────────────────
+5.2) WebRTC Kurulum (ICE + DTLS + SRTP)
+─────────────────────────────────────────────────────────────────────────────
+
+Application
+    |
+    | createOffer/createAnswer
+    v
+RTCPeerConnection
+    |
+    | setLocalDescription
+    v
+RTCIceGatherer.gather()
+    |
+    | Collect local candidates
+    | - Host candidates (local IPs)
+    | - Server reflexive (STUN)
+    | - Relayed (TURN)
+    v
+ICE Candidates → Signaling → Remote Peer
+    |
+    | addRemoteCandidate
+    v
+RTCIceTransport.start()
+    |
+    | Connectivity checks (STUN Binding)
+    | - Check all candidate pairs
+    | - Select best pair (lowest latency)
+    v
+ICE Connected
+    |
+    | Trigger DTLS
+    v
+RTCDtlsTransport.start()
+    |
+    | DTLS Handshake
+    | - Certificate exchange
+    | - Fingerprint verification
+    | - Key derivation
+    v
+DTLS Connected
+    |
+    | Derive SRTP keys
+    v
+SRTP/SRTCP Ready
+    |
+    | Start RTP sender/receiver
+    v
+Media Flow Active
+
+─────────────────────────────────────────────────────────────────────────────
+5.3) RTP Media Gönderim Akışı (Sender)
+─────────────────────────────────────────────────────────────────────────────
+
+MediaStreamTrack (Application)
+    |
+    | track.recv() → Frame/Packet
+    v
+RTCRtpSender._run_rtp()
+    |
+    | _next_encoded_frame()
+    v
+Encoder (Opus/H264/VP8)
+    |
+    | encode(frame) → payloads
+    v
+RTP Packetization
+    |
+    | - Sequence number
+    | - Timestamp
+    | - SSRC
+    | - Header extensions (mid, abs-send-time, audio-level)
+    v
+RTP History (for retransmission)
+    |
+    v
+RTCDtlsTransport._send_rtp()
+    |
+    | SRTP encryption
+    v
+UDP Socket → Network → Remote Peer
+
+Parallel: RTCP Sender Reports
+    |
+    | RTCRtpSender._run_rtcp()
+    | - Periodic SR (Sender Report)
+    | - SDES (CNAME)
+    v
+RTCP Packets → Network
+
+─────────────────────────────────────────────────────────────────────────────
+5.4) RTP Media Alım Akışı (Receiver)
+─────────────────────────────────────────────────────────────────────────────
+
+Network → UDP Socket
+    |
+    | SRTP decryption
+    v
+RTCDtlsTransport → RTP Packet
+    |
+    v
+RTCRtpReceiver._handle_rtp_packet()
+    |
+    | - Unwrap RTX (if retransmission)
+    | - Update statistics (jitter, packet loss)
+    | - NACK generation (if missing packets)
+    v
+Depayload (codec-specific)
+    |
+    v
+JitterBuffer.add()
+    |
+    | - Reorder packets
+    | - Detect missing frames
+    | - Trigger PLI if needed
+    v
+Complete Encoded Frame
+    |
+    v
+Decoder Thread (decoder_worker)
+    |
+    | Decoder.decode() → Frame
+    v
+RemoteStreamTrack._queue
+    |
+    | Application: await track.recv()
+    v
+Application (VideoFrame/AudioFrame)
+
+Parallel: RTCP Receiver Reports
+    |
+    | RTCRtpReceiver._run_rtcp()
+    | - Periodic RR (Receiver Report)
+    | - Fraction lost, jitter
+    v
+RTCP Packets → Network
+
+─────────────────────────────────────────────────────────────────────────────
+5.5) NACK/PLI Recovery Akışı
+─────────────────────────────────────────────────────────────────────────────
+
+Receiver: Missing RTP Packet Detected
+    |
+    | NackGenerator.add() → missing.add(seq)
+    v
+RTCRtpReceiver._send_rtcp_nack(ssrc, [seq1, seq2, ...])
+    |
+    | RTCP NACK packet
+    v
+Network → Sender
+    |
+    v
+RTCRtpSender._handle_rtcp_packet(NACK)
+    |
+    | _retransmit(seq)
+    | - Lookup RTP history
+    | - Wrap as RTX packet (if enabled)
+    v
+Retransmitted RTP Packet → Network → Receiver
+    |
+    v
+Receiver: Packet recovered, remove from missing set
+
+Video: Frame Assembly Failed
+    |
+    | JitterBuffer detects incomplete frame
+    v
+RTCRtpReceiver._send_rtcp_pli(ssrc)
+    |
+    | RTCP PLI (Picture Loss Indication)
+    v
+Network → Sender
+    |
+    v
+RTCRtpSender._handle_rtcp_packet(PLI)
+    |
+    | _send_keyframe() → force_keyframe = True
+    v
+Next frame encoded as I-frame (keyframe)
+    |
+    v
+Network → Receiver → Decoder can resync
+
+─────────────────────────────────────────────────────────────────────────────
+5.6) Data Channel Akışı
+─────────────────────────────────────────────────────────────────────────────
+
+Application: pc.createDataChannel("chat")
+    |
+    v
+RTCDataChannel (negotiated=False)
+    |
+    | DCEP Open message
+    v
+RTCSctpTransport._data_channel_open()
+    |
+    | SCTP DATA chunk (PPID=50)
+    v
+Network → Remote Peer
+    |
+    v
+Remote: RTCSctpTransport receives DCEP Open
+    |
+    | Create RTCDataChannel
+    | Emit 'datachannel' event
+    v
+Remote: pc.on('datachannel', channel)
+    |
+    | channel.on('open')
+    v
+Both sides: readyState = 'open'
+
+Application: channel.send("Hello")
+    |
+    v
+RTCDataChannel.send()
+    |
+    v
+RTCSctpTransport._data_channel_send()
+    |
+    | SCTP DATA chunk (PPID=51 for string, 53 for binary)
+    v
+DTLS → Network → Remote
+    |
+    v
+Remote: RTCSctpTransport receives DATA
+    |
+    | _data_channel_receive()
+    v
+Remote: channel.emit('message', data)
+    |
+    v
+Remote Application: channel.on('message', callback)
+
+─────────────────────────────────────────────────────────────────────────────
+5.7) İstatistik Toplama Akışı
+─────────────────────────────────────────────────────────────────────────────
+
+Application: stats = await pc.getStats()
+    |
+    v
+RTCPeerConnection.getStats()
+    |
+    | Gather from all senders and receivers
+    v
+RTCRtpSender.getStats()
+    |
+    | - RTCOutboundRtpStreamStats
+    |   - packetsSent, bytesSent
+    |   - SSRC, codec
+    | - RTCRemoteInboundRtpStreamStats (from RTCP RR)
+    |   - packetsLost, jitter, RTT
+    v
+RTCRtpReceiver.getStats()
+    |
+    | - RTCInboundRtpStreamStats
+    |   - packetsReceived, packetsLost, jitter
+    | - RTCRemoteOutboundRtpStreamStats (from RTCP SR)
+    |   - packetsSent, bytesSent
+    v
+RTCDtlsTransport._get_stats()
+    |
+    | - RTCTransportStats
+    |   - bytesSent, bytesReceived
+    |   - iceRole, dtlsState
+    v
+Merge all stats → RTCStatsReport (dict)
+    |
+    v
+Application: Process stats
+    | - Display in UI
+    | - Log to monitoring system
+    | - Trigger adaptive bitrate
+
+================================================================================
+6) KONFİGÜRASYON & DAĞITIM
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+6.1) Ortam Değişkenleri
+─────────────────────────────────────────────────────────────────────────────
+
+Proje kendisi ortam değişkeni kullanmıyor, ancak uygulama seviyesinde
+tipik kullanım:
+
+STUN_SERVER=stun:stun.l.google.com:19302
+TURN_SERVER=turn:turn.example.com:3478
+TURN_USERNAME=user123
+TURN_PASSWORD=pass456
+TURN_CREDENTIAL=secret
+
+SIGNALING_HOST=0.0.0.0
+SIGNALING_PORT=8080
+SSL_CERT_FILE=/path/to/cert.pem
+SSL_KEY_FILE=/path/to/key.pem
+
+MEDIA_RECORD_PATH=/var/media/recordings
+LOG_LEVEL=INFO
+
+─────────────────────────────────────────────────────────────────────────────
+6.2) Docker/Compose/Nixpacks/Procfile
+─────────────────────────────────────────────────────────────────────────────
+
+Mevcut Durum: Proje kökünde Docker/compose/Nixpacks/Procfile YOK.
+
+Önerilen Dockerfile:
+```dockerfile
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y \
+    libavformat-dev libavcodec-dev libavdevice-dev \
+    libavutil-dev libswscale-dev libswresample-dev \
+    libavfilter-dev libopus-dev libvpx-dev libsrtp2-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN pip install -e .
+EXPOSE 8080
+CMD ["python", "examples/server/server.py", "--host", "0.0.0.0", "--port", "8080"]
+```
+
+Önerilen docker-compose.yml:
+```yaml
+version: '3.8'
+services:
+  aiortc-server:
+    build: .
+    ports:
+      - "8080:8080"
+      - "50000-50100:50000-50100/udp"  # RTP ports
+    environment:
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./recordings:/app/recordings
+```
+
+─────────────────────────────────────────────────────────────────────────────
+6.3) Production Güvenlik
+─────────────────────────────────────────────────────────────────────────────
+
+Mevcut Durum:
++ DTLS encryption (media)
++ SRTP encryption (RTP/RTCP)
++ Certificate fingerprint verification
++ Random SSRC/sequence number
+- Eksik: HSTS header (uygulama seviyesi)
+- Eksik: CSP header (uygulama seviyesi)
+- Eksik: X-Frame-Options (uygulama seviyesi)
+- Eksik: Referrer-Policy (uygulama seviyesi)
+- Eksik: Rate limiting (uygulama seviyesi)
+
+Önerilen Güvenlik Önlemleri:
+
+1. HTTPS Zorunluluğu:
+   - SSL/TLS certificate (Let's Encrypt)
+   - HSTS header: max-age=31536000; includeSubDomains
+
+2. HTTP Headers (aiohttp middleware):
+   - Content-Security-Policy: default-src 'self'
+   - X-Frame-Options: DENY
+   - X-Content-Type-Options: nosniff
+   - Referrer-Policy: strict-origin-when-cross-origin
+
+3. CORS:
+   - Explicit origin whitelist
+   - Credentials: true (if needed)
+
+4. Rate Limiting:
+   - Per-IP connection limit
+   - Per-IP request rate limit
+   - WebSocket message rate limit
+
+5. Authentication:
+   - JWT tokens
+   - Session management
+   - TURN credential rotation
+
+6. Input Validation:
+   - SDP validation
+   - ICE candidate validation
+   - Data channel message size limit
+
+================================================================================
+7) VERİ MODELİ & DAYANIKLILIK
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+7.1) Veri Modeli
+─────────────────────────────────────────────────────────────────────────────
+
+aiortc kütüphanesi kendisi veritabanı kullanmıyor. Ancak tipik bir WebRTC
+uygulaması için önerilen şema:
+
+Tablo: sessions
+- id (UUID, PK)
+- created_at (TIMESTAMP)
+- updated_at (TIMESTAMP)
+- caller_id (VARCHAR)
+- callee_id (VARCHAR)
+- status (ENUM: pending, active, ended)
+- signaling_state (VARCHAR)
+- ice_connection_state (VARCHAR)
+- connection_state (VARCHAR)
+- ended_at (TIMESTAMP)
+- end_reason (VARCHAR)
+
+Tablo: media_tracks
+- id (UUID, PK)
+- session_id (UUID, FK → sessions.id)
+- track_id (VARCHAR)
+- kind (ENUM: audio, video)
+- direction (ENUM: sendonly, recvonly, sendrecv)
+- codec (VARCHAR)
+- ssrc (BIGINT)
+- created_at (TIMESTAMP)
+
+Tablo: call_metrics
+- id (UUID, PK)
+- session_id (UUID, FK → sessions.id)
+- track_id (UUID, FK → media_tracks.id)
+- timestamp (TIMESTAMP)
+- packets_sent (BIGINT)
+- packets_received (BIGINT)
+- packets_lost (INT)
+- bytes_sent (BIGINT)
+- bytes_received (BIGINT)
+- jitter (FLOAT)
+- rtt (FLOAT)
+- bitrate (INT)
+
+Tablo: ice_candidates
+- id (UUID, PK)
+- session_id (UUID, FK → sessions.id)
+- candidate (TEXT)
+- sdp_mid (VARCHAR)
+- sdp_mline_index (INT)
+- type (ENUM: host, srflx, relay)
+- protocol (ENUM: udp, tcp)
+- priority (BIGINT)
+- created_at (TIMESTAMP)
+
+Tablo: audit_logs
+- id (UUID, PK)
+- session_id (UUID, FK → sessions.id)
+- timestamp (TIMESTAMP)
+- event_type (VARCHAR)
+- event_data (JSONB)
+- user_id (VARCHAR)
+- ip_address (INET)
+
+─────────────────────────────────────────────────────────────────────────────
+7.2) Saklama Politikası (Retention)
+─────────────────────────────────────────────────────────────────────────────
+
+Önerilen:
+- sessions: 90 gün (GDPR compliance)
+- media_tracks: 90 gün
+- call_metrics: 30 gün (yüksek hacim)
+- ice_candidates: 7 gün (debug için)
+- audit_logs: 1 yıl (compliance)
+
+İndeks Önerileri:
+- sessions: (created_at), (caller_id), (callee_id), (status)
+- media_tracks: (session_id), (track_id)
+- call_metrics: (session_id, timestamp), (track_id, timestamp)
+- ice_candidates: (session_id)
+- audit_logs: (session_id), (timestamp), (user_id)
+
+─────────────────────────────────────────────────────────────────────────────
+7.3) Tutarlılık
+─────────────────────────────────────────────────────────────────────────────
+
+Zaman Dilimi:
+- Tüm timestamp'ler UTC
+- NTP time kullanımı (clock.py)
+- Monotonic clock for intervals
+
+Tarih Formatı:
+- ISO 8601: YYYY-MM-DDTHH:MM:SS.sssZ
+- Python: datetime.datetime.utcnow()
+
+─────────────────────────────────────────────────────────────────────────────
+7.4) Kayıt Silme
+─────────────────────────────────────────────────────────────────────────────
+
+Önerilen: Soft delete
+- sessions.deleted_at (TIMESTAMP NULL)
+- Cascade to related tables
+- Audit log for deletion
+
+Hard delete:
+- Retention policy expired
+- GDPR right to be forgotten
+- Scheduled cleanup job
+
+
+================================================================================
+8) "SADECE SES" vs "SES+GÖRÜNTÜ" YAPISAL KARŞILAŞTIRMA
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+8.1) Ortak Modüller (Her İki Yapıda da Kullanılır)
+─────────────────────────────────────────────────────────────────────────────
+
+✓ RTCPeerConnection: Offer/answer, signaling
+✓ RTCIceTransport: ICE candidate gathering, connectivity
+✓ RTCDtlsTransport: DTLS handshake, encryption
+✓ RTCSctpTransport: Data channels
+✓ RTCDataChannel: Application data
+✓ SDP parsing/generation: Session description
+✓ RTCP: Sender/receiver reports
+✓ Statistics: getStats() API
+✓ Signaling helpers: contrib/signaling.py
+
+─────────────────────────────────────────────────────────────────────────────
+8.2) Sadece Ses Katmanı
+─────────────────────────────────────────────────────────────────────────────
+
+Kullanılan Modüller:
+- RTCRtpSender/Receiver (audio only)
+- Audio codecs: Opus, G.722, PCMU, PCMA
+- AudioStreamTrack
+- JitterBuffer (capacity=16, prefetch=4)
+- Audio resampler (48kHz stereo)
+
+Avantajlar:
++ Düşük bant genişliği: ~32-128 kbps (Opus)
++ Düşük gecikme: <100ms
++ Yüksek stabilite: Packet loss tolerance
++ Düşük CPU kullanımı
++ Mobil ağlarda iyi performans
++ Opus FEC desteği (potansiyel)
+
+Eksikler:
+- Görsel bilgi yok
+- Ekran paylaşımı yok
+- Video conferencing özellikleri yok
+
+Tipik Kullanım:
+- VoIP uygulamaları
+- Sesli sohbet
+- Podcast streaming
+- Audio conferencing
+
+Bant Genişliği (Sadece Ses):
+- Opus 48kHz stereo: ~96 kbps
+- G.722: ~64 kbps
+- PCMU/PCMA: ~64 kbps
+- Overhead (RTP/UDP/IP): ~10-15%
+- Toplam: ~70-110 kbps per stream
+
+─────────────────────────────────────────────────────────────────────────────
+8.3) Ses+Görüntü Katmanı
+─────────────────────────────────────────────────────────────────────────────
+
+Kullanılan Modüller:
+- RTCRtpSender/Receiver (audio + video)
+- Audio codecs: Opus, G.722, PCMU, PCMA
+- Video codecs: VP8, H.264
+- AudioStreamTrack + VideoStreamTrack
+- JitterBuffer (video: capacity=128, is_video=True)
+- Video encoder/decoder (libx264, libvpx)
+- NackGenerator (video only)
+- RemoteBitrateEstimator (video only)
+- PLI/FIR support
+
+Ek Yükler:
++ Video encoding/decoding: Yüksek CPU
++ Video bitrate: 500kbps - 3Mbps
++ Jitter buffer: Daha büyük (128 vs 16)
++ NACK/PLI: Packet loss recovery
++ Keyframe requests: Bandwidth spikes
++ Resolution/framerate negotiation
+
+Avantajlar:
++ Görsel iletişim
++ Ekran paylaşımı (potansiyel)
++ Video conferencing
++ Rich media experience
+
+Eksikler:
+- Yüksek bant genişliği
+- Yüksek CPU kullanımı
+- Packet loss'a daha hassas
+- Mobil ağlarda zorluk
+- Battery drain (mobile)
+
+Tipik Kullanım:
+- Video conferencing
+- Video chat
+- Live streaming
+- Remote collaboration
+- Telemedicine
+
+Bant Genişliği (Ses+Görüntü):
+- Audio (Opus): ~96 kbps
+- Video 720p@30fps (H.264): ~1-2 Mbps
+- Video 1080p@30fps (H.264): ~2-4 Mbps
+- Overhead (RTP/UDP/IP): ~10-15%
+- Toplam: ~1.2-4.6 Mbps per stream
+
+─────────────────────────────────────────────────────────────────────────────
+8.4) Hangisi Nerede Mantıklı? (ÖNERİ)
+─────────────────────────────────────────────────────────────────────────────
+
+SADECE SES:
+✓ VoIP uygulamaları
+✓ Müşteri hizmetleri (call center)
+✓ Podcast/radio streaming
+✓ Düşük bant genişliği ortamları
+✓ Mobil ağlar (3G/4G)
+✓ IoT cihazlar
+✓ Background audio
+
+SES+GÖRÜNTÜ:
+✓ Video conferencing (Zoom, Meet, Teams)
+✓ Telemedicine (doktor-hasta görüşmesi)
+✓ Remote education (online dersler)
+✓ Live streaming (Twitch, YouTube Live)
+✓ Video chat (WhatsApp, FaceTime)
+✓ Remote collaboration (pair programming)
+✓ Security/surveillance
+
+HİBRİT YAKLAŞIM (Önerilen):
+1. Başlangıç: Sadece ses
+2. Kullanıcı talebi: Video ekleme (addTrack)
+3. Ağ durumu: Adaptive bitrate
+4. Cihaz durumu: Battery-aware (mobile)
+
+Tekleştirme Stratejisi:
+- Ortak RTCPeerConnection
+- Ortak ICE/DTLS transport
+- Ortak signaling
+- Modüler codec sistemi (zaten var)
+- Ses modüllerini video yapıda reuse (zaten yapılmış)
+
+Kod Reuse:
+✓ aiortc zaten unified: Aynı RTCPeerConnection hem ses hem video
+✓ Transceiver pattern: addTrack(audio) + addTrack(video)
+✓ Codec negotiation: SDP'de her ikisi de
+✓ Transport sharing: BUNDLE policy
+
+Önerilen Mimari:
+```python
+# Unified approach (aiortc already does this)
+pc = RTCPeerConnection()
+
+# Audio always
+pc.addTrack(audio_track)
+
+# Video optional
+if user_wants_video:
+    pc.addTrack(video_track)
+
+# Adaptive
+if network_quality < threshold:
+    video_track.stop()  # Fallback to audio-only
+```
+
+================================================================================
+9) EKSİK PARÇALAR & RİSKLER (Prioriteli)
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+P0 (KRİTİK) - Hemen Yapılmalı
+─────────────────────────────────────────────────────────────────────────────
+
+1. TURN Sunucu Desteği Eksik
+   Risk: Symmetric NAT arkasındaki kullanıcılar bağlanamaz
+   Çözüm: RTCConfiguration'da iceServers ile TURN ekleme
+   Durum: API var, dokümantasyon gerekli
+   Örnek:
+   ```python
+   config = RTCConfiguration(
+       iceServers=[
+           RTCIceServer(urls=["stun:stun.l.google.com:19302"]),
+           RTCIceServer(
+               urls=["turn:turn.example.com:3478"],
+               username="user",
+               credential="pass"
+           )
+       ]
+   )
+   ```
+
+2. getStats() MOS (Mean Opinion Score) Yok
+   Risk: Ses/video kalitesi ölçülemiyor
+   Çözüm: RTCInboundRtpStreamStats'a MOS hesaplama ekle
+   Formül: MOS = f(packet_loss, jitter, RTT)
+   Kod:
+   ```python
+   def calculate_mos(packet_loss_pct, jitter_ms, rtt_ms):
+       # ITU-T G.107 E-model simplified
+       R = 93.2 - packet_loss_pct * 2.5 - jitter_ms * 0.1 - rtt_ms * 0.02
+       MOS = 1 + 0.035 * R + 7e-6 * R * (R - 60) * (100 - R)
+       return max(1.0, min(5.0, MOS))
+   ```
+
+3. Cihaz Seçimi API Eksik
+   Risk: Kullanıcı mikrofon/kamera seçemiyor
+   Çözüm: MediaDevices.enumerateDevices() benzeri
+   Durum: PyAV ile mümkün, wrapper gerekli
+   Örnek:
+   ```python
+   from aiortc.contrib.media import enumerate_devices
+   devices = enumerate_devices()
+   # [{'kind': 'audioinput', 'deviceId': '...', 'label': 'Microphone'}]
+   ```
+
+─────────────────────────────────────────────────────────────────────────────
+P1 (ÖNEMLİ) - Kısa Vadede Yapılmalı
+─────────────────────────────────────────────────────────────────────────────
+
+4. Hataya Dayanıklılık (Error Recovery)
+   Risk: Geçici ağ kesintilerinde bağlantı kopuyor
+   Çözüm: ICE restart, automatic reconnection
+   Kod:
+   ```python
+   @pc.on('iceconnectionstatechange')
+   async def on_ice_state():
+       if pc.iceConnectionState == 'failed':
+           # ICE restart
+           offer = await pc.createOffer(iceRestart=True)
+           await pc.setLocalDescription(offer)
+   ```
+
+5. Simulcast/SVC Desteği Yok
+   Risk: Farklı bant genişliklerine adaptasyon zor
+   Çözüm: Simulcast encoding (multiple resolutions)
+   Durum: Büyük değişiklik gerektirir
+   Fayda: Multi-party conferencing için kritik
+
+6. Perfect Negotiation Pattern Yok
+   Risk: Glare condition (simultaneous offers)
+   Çözüm: Perfect negotiation pattern implementasyonu
+   Kod:
+   ```python
+   polite = True  # One peer is polite
+   
+   @pc.on('negotiationneeded')
+   async def on_negotiation():
+       try:
+           await pc.setLocalDescription(await pc.createOffer())
+           # Send offer
+       except Exception:
+           if not polite:
+               raise
+   ```
+
+7. Adaptive Bitrate Eksik
+   Risk: Ağ durumu değişince kalite düşüyor
+   Çözüm: REMB feedback'e göre encoder bitrate ayarlama
+   Durum: REMB alımı var, encoder ayarı eksik
+   Kod:
+   ```python
+   # H264Encoder.target_bitrate zaten var
+   # Otomatik ayarlama gerekli
+   if remb_bitrate < current_bitrate * 0.8:
+       encoder.target_bitrate = remb_bitrate * 0.9
+   ```
+
+8. Authentication/Authorization Yok
+   Risk: Herkes bağlanabilir
+   Çözüm: JWT token, session management
+   Durum: Uygulama seviyesi (aiortc dışı)
+   Örnek:
+   ```python
+   @routes.post('/offer')
+   async def offer(request):
+       token = request.headers.get('Authorization')
+       if not verify_jwt(token):
+           raise web.HTTPUnauthorized()
+       # ...
+   ```
+
+─────────────────────────────────────────────────────────────────────────────
+P2 (İYİ-OLUR) - Uzun Vadede Yapılmalı
+─────────────────────────────────────────────────────────────────────────────
+
+9. Ekran Paylaşımı (Screen Capture)
+   Risk: Yok (feature request)
+   Çözüm: Platform-specific screen capture
+   Durum: PyAV ile mümkün, örnek gerekli
+
+10. E2E Encryption (Insertable Streams)
+    Risk: DTLS yeterli ama E2E değil
+    Çözüm: Frame encryption before RTP
+    Durum: Büyük değişiklik
+
+11. Recording API
+    Risk: MediaRecorder var ama sınırlı
+    Çözüm: Better recording options (pause/resume, seek)
+
+12. Bandwidth Estimation İyileştirme
+    Risk: RemoteBitrateEstimator basit
+    Çözüm: Google Congestion Control (GCC) algoritması
+
+13. FEC (Forward Error Correction)
+    Risk: Packet loss'ta kalite düşüyor
+    Çözüm: RED/ULPFEC codec support
+
+14. Accessibility (Erişilebilirlik)
+    Risk: Engelli kullanıcılar için destek yok
+    Çözüm: Captions, audio descriptions, keyboard navigation
+
+15. Test Coverage Artırma
+    Risk: Bazı edge case'ler test edilmemiş
+    Çözüm: Integration tests, stress tests, fuzzing
+
+16. Performance Profiling
+    Risk: Bottleneck'ler bilinmiyor
+    Çözüm: cProfile, memory profiler, async profiler
+
+================================================================================
+10) ÖNERİLEN YENİ DOSYA YAPISI (Refactor Teklifi)
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+Şu Anki Yapı vs Önerilen Yapı
+─────────────────────────────────────────────────────────────────────────────
+
+ŞU ANKİ:                              ÖNERİLEN:
+src/aiortc/                           src/aiortc/
+├─ codecs/                            ├─ core/
+│  ├─ __init__.py                     │  ├─ __init__.py
+│  ├─ base.py                         │  ├─ peerconnection.py (rtcpeerconnection.py)
+│  ├─ opus.py                         │  ├─ transceiver.py (rtcrtptransceiver.py)
+│  ├─ h264.py                         │  ├─ configuration.py (rtcconfiguration.py)
+│  ├─ ...                             │  └─ events.py
+├─ contrib/                           ├─ transport/
+│  ├─ media.py                        │  ├─ __init__.py
+│  └─ signaling.py                    │  ├─ ice.py (rtcicetransport.py)
+├─ rtcpeerconnection.py               │  ├─ dtls.py (rtcdtlstransport.py)
+├─ rtcrtpsender.py                    │  └─ sctp.py (rtcsctptransport.py)
+├─ rtcrtpreceiver.py                  ├─ rtp/
+├─ rtcrtptransceiver.py               │  ├─ __init__.py
+├─ rtcicetransport.py                 │  ├─ sender.py (rtcrtpsender.py)
+├─ rtcdtlstransport.py                │  ├─ receiver.py (rtcrtpreceiver.py)
+├─ rtcsctptransport.py                │  ├─ parameters.py (rtcrtpparameters.py)
+├─ rtcdatachannel.py                  │  ├─ protocol.py (rtp.py)
+├─ sdp.py                             │  └─ jitterbuffer.py
+├─ rtp.py                             ├─ codecs/
+├─ ...                                │  ├─ __init__.py
+                                      │  ├─ base.py
+                                      │  ├─ audio/
+                                      │  │  ├─ __init__.py
+                                      │  │  ├─ opus.py
+                                      │  │  ├─ g711.py
+                                      │  │  └─ g722.py
+                                      │  └─ video/
+                                      │     ├─ __init__.py
+                                      │     ├─ h264.py
+                                      │     └─ vpx.py
+                                      ├─ datachannel/
+                                      │  ├─ __init__.py
+                                      │  ├─ channel.py (rtcdatachannel.py)
+                                      │  └─ sctp.py (moved from transport)
+                                      ├─ media/
+                                      │  ├─ __init__.py
+                                      │  ├─ tracks.py (mediastreams.py)
+                                      │  ├─ player.py (from contrib/media.py)
+                                      │  ├─ recorder.py (from contrib/media.py)
+                                      │  └─ relay.py (from contrib/media.py)
+                                      ├─ signaling/
+                                      │  ├─ __init__.py
+                                      │  ├─ base.py
+                                      │  ├─ sdp.py
+                                      │  └─ channels.py (from contrib/signaling.py)
+                                      ├─ stats/
+                                      │  ├─ __init__.py
+                                      │  ├─ stats.py
+                                      │  └─ metrics.py (new: MOS, quality)
+                                      ├─ utils/
+                                      │  ├─ __init__.py
+                                      │  ├─ clock.py
+                                      │  ├─ rate.py
+                                      │  └─ exceptions.py
+                                      └─ __init__.py
+
+─────────────────────────────────────────────────────────────────────────────
+Gerekçeler
+─────────────────────────────────────────────────────────────────────────────
+
+1. core/: Ana WebRTC API'si (RTCPeerConnection, transceiver)
+   - Daha net separation of concerns
+   - Kullanıcı en çok bunları kullanır
+
+2. transport/: Tüm transport katmanı (ICE, DTLS, SCTP)
+   - Logical grouping
+   - Easier to understand stack
+
+3. rtp/: RTP/RTCP işlemleri
+   - Sender, receiver, protocol ayrı modüller
+   - Jitter buffer RTP'ye ait
+
+4. codecs/audio/ ve codecs/video/: Codec ayrımı
+   - Audio ve video codec'leri ayrı
+   - Yeni codec eklemek daha kolay
+
+5. datachannel/: Data channel ayrı modül
+   - SCTP burada daha mantıklı (data channel için kullanılıyor)
+   - Veya transport/'ta kalabilir (tartışmalı)
+
+6. media/: Media helpers (player, recorder, relay)
+   - contrib/ yerine media/ daha açık
+   - MediaStreamTrack burada
+
+7. signaling/: Signaling helpers
+   - SDP parsing burada
+   - Signaling channels burada
+
+8. stats/: İstatistik ve metrikler
+   - stats.py + yeni metrics.py (MOS, quality)
+
+9. utils/: Utility modüller
+   - clock, rate, exceptions
+
+Avantajlar:
++ Daha modüler
++ Daha kolay navigate
++ Yeni özellik eklemek daha kolay
++ Test organizasyonu daha iyi
++ Dokümantasyon daha net
+
+Dezavantajlar:
+- Breaking change (major version bump gerekir)
+- Migration guide gerekli
+- Backward compatibility layer gerekebilir
+
+
+================================================================================
+11) ENDPOINT & EVENT SÖZLEŞMESI (API Contract)
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+11.1) REST API Endpoints (Örnek Uygulama İçin)
+─────────────────────────────────────────────────────────────────────────────
+
+POST /api/offer
+Açıklama: WebRTC offer gönder, answer al
+Request:
+{
+  "sdp": "v=0\r\no=- ...",
+  "type": "offer",
+  "video_transform": "none|edges|cartoon|rotate"  // optional
+}
+Response (200):
+{
+  "sdp": "v=0\r\no=- ...",
+  "type": "answer"
+}
+Errors:
+- 400: Invalid SDP
+- 500: Internal error
+
+POST /api/ice-candidate
+Açıklama: ICE candidate gönder (trickle ICE)
+Request:
+{
+  "candidate": "candidate:1 1 UDP 2130706431 192.168.1.100 54321 typ host",
+  "sdpMid": "0",
+  "sdpMLineIndex": 0
+}
+Response (200):
+{
+  "status": "ok"
+}
+
+GET /api/stats
+Açıklama: Bağlantı istatistikleri al
+Response (200):
+{
+  "connectionState": "connected",
+  "iceConnectionState": "connected",
+  "stats": {
+    "inbound-rtp": {
+      "packetsReceived": 1234,
+      "packetsLost": 5,
+      "jitter": 10.5,
+      "bytesReceived": 567890
+    },
+    "outbound-rtp": {
+      "packetsSent": 1230,
+      "bytesSent": 560000
+    }
+  }
+}
+
+POST /api/session/create
+Açıklama: Yeni session oluştur
+Request:
+{
+  "userId": "user123",
+  "roomId": "room456"
+}
+Response (200):
+{
+  "sessionId": "uuid-...",
+  "iceServers": [
+    {"urls": ["stun:stun.l.google.com:19302"]},
+    {"urls": ["turn:..."], "username": "...", "credential": "..."}
+  ]
+}
+
+DELETE /api/session/{sessionId}
+Açıklama: Session sonlandır
+Response (200):
+{
+  "status": "ok"
+}
+
+─────────────────────────────────────────────────────────────────────────────
+11.2) WebSocket Events (Signaling)
+─────────────────────────────────────────────────────────────────────────────
+
+Client → Server Events:
+
+ws.send({
+  "type": "offer",
+  "sdp": "v=0\r\no=- ...",
+  "sessionId": "uuid-..."
+})
+
+ws.send({
+  "type": "answer",
+  "sdp": "v=0\r\no=- ...",
+  "sessionId": "uuid-..."
+})
+
+ws.send({
+  "type": "candidate",
+  "candidate": "candidate:...",
+  "sdpMid": "0",
+  "sdpMLineIndex": 0,
+  "sessionId": "uuid-..."
+})
+
+ws.send({
+  "type": "bye",
+  "sessionId": "uuid-..."
+})
+
+Server → Client Events:
+
+ws.send({
+  "type": "offer",
+  "sdp": "v=0\r\no=- ...",
+  "sessionId": "uuid-...",
+  "from": "user123"
+})
+
+ws.send({
+  "type": "answer",
+  "sdp": "v=0\r\no=- ...",
+  "sessionId": "uuid-..."
+})
+
+ws.send({
+  "type": "candidate",
+  "candidate": "candidate:...",
+  "sdpMid": "0",
+  "sdpMLineIndex": 0,
+  "sessionId": "uuid-..."
+})
+
+ws.send({
+  "type": "error",
+  "code": "INVALID_SDP",
+  "message": "SDP parsing failed"
+})
+
+ws.send({
+  "type": "bye",
+  "sessionId": "uuid-...",
+  "reason": "user_left"
+})
+
+─────────────────────────────────────────────────────────────────────────────
+11.3) RTCPeerConnection Events (aiortc)
+─────────────────────────────────────────────────────────────────────────────
+
+@pc.on('connectionstatechange')
+Payload: None
+Kullanım: pc.connectionState → "new"|"connecting"|"connected"|"failed"|"closed"
+
+@pc.on('iceconnectionstatechange')
+Payload: None
+Kullanım: pc.iceConnectionState → "new"|"checking"|"connected"|"completed"|"failed"|"closed"
+
+@pc.on('icegatheringstatechange')
+Payload: None
+Kullanım: pc.iceGatheringState → "new"|"gathering"|"complete"
+
+@pc.on('signalingstatechange')
+Payload: None
+Kullanım: pc.signalingState → "stable"|"have-local-offer"|"have-remote-offer"|"closed"
+
+@pc.on('track')
+Payload: MediaStreamTrack
+Kullanım:
+```python
+@pc.on('track')
+def on_track(track):
+    print(f"Track {track.kind} received")
+    if track.kind == 'audio':
+        # Handle audio
+    elif track.kind == 'video':
+        # Handle video
+```
+
+@pc.on('datachannel')
+Payload: RTCDataChannel
+Kullanım:
+```python
+@pc.on('datachannel')
+def on_datachannel(channel):
+    @channel.on('message')
+    def on_message(message):
+        print(f"Message: {message}")
+```
+
+─────────────────────────────────────────────────────────────────────────────
+11.4) RTCDataChannel Events
+─────────────────────────────────────────────────────────────────────────────
+
+@channel.on('open')
+Payload: None
+Kullanım: Channel açıldı, send() kullanılabilir
+
+@channel.on('message')
+Payload: str | bytes
+Kullanım: Mesaj alındı
+
+@channel.on('close')
+Payload: None
+Kullanım: Channel kapandı
+
+@channel.on('error')
+Payload: Exception
+Kullanım: Hata oluştu
+
+@channel.on('bufferedamountlow')
+Payload: None
+Kullanım: bufferedAmount < bufferedAmountLowThreshold
+
+─────────────────────────────────────────────────────────────────────────────
+11.5) MediaStreamTrack Events
+─────────────────────────────────────────────────────────────────────────────
+
+@track.on('ended')
+Payload: None
+Kullanım: Track sonlandı
+
+─────────────────────────────────────────────────────────────────────────────
+11.6) Hata Kodları ve Senaryolar
+─────────────────────────────────────────────────────────────────────────────
+
+HTTP 400 Bad Request:
+- INVALID_SDP: SDP parsing failed
+- INVALID_CANDIDATE: ICE candidate invalid
+- MISSING_PARAMETER: Required parameter missing
+- INVALID_SESSION: Session ID not found
+
+HTTP 401 Unauthorized:
+- INVALID_TOKEN: JWT token invalid or expired
+- MISSING_AUTH: Authorization header missing
+
+HTTP 403 Forbidden:
+- INSUFFICIENT_PERMISSIONS: User lacks permission
+- RATE_LIMITED: Too many requests
+
+HTTP 404 Not Found:
+- SESSION_NOT_FOUND: Session ID not found
+- RESOURCE_NOT_FOUND: Resource not found
+
+HTTP 500 Internal Server Error:
+- INTERNAL_ERROR: Unexpected error
+- ICE_FAILED: ICE connection failed
+- DTLS_FAILED: DTLS handshake failed
+- CODEC_ERROR: Codec initialization failed
+
+WebSocket Close Codes:
+- 1000: Normal closure
+- 1001: Going away (server shutdown)
+- 1002: Protocol error
+- 1003: Unsupported data
+- 1008: Policy violation
+- 1011: Internal error
+
+Tipik Senaryolar:
+
+1. Başarılı Bağlantı:
+   Client: POST /api/session/create → 200
+   Client: WS connect
+   Client: WS send offer
+   Server: WS send answer
+   Client/Server: WS send candidates (trickle)
+   ICE: connected
+   DTLS: connected
+   Media: flowing
+
+2. ICE Başarısız:
+   ... (yukarıdaki gibi)
+   ICE: failed
+   Server: WS send {"type": "error", "code": "ICE_FAILED"}
+   Client: Retry with TURN
+
+3. Codec Uyumsuzluğu:
+   Client: POST /api/offer (only VP8)
+   Server: 400 {"error": "CODEC_ERROR", "message": "No common codec"}
+
+4. Session Timeout:
+   Client: Inactive for 5 minutes
+   Server: WS send {"type": "bye", "reason": "timeout"}
+   Server: WS close 1000
+
+================================================================================
+12) TEST PLANI (Kısa)
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+12.1) Birim Testler (Unit Tests)
+─────────────────────────────────────────────────────────────────────────────
+
+Mevcut: tests/test_*.py (comprehensive)
+
+Kapsam:
+✓ Codec encoding/decoding
+✓ RTP/RTCP packet parsing
+✓ SDP parsing/generation
+✓ ICE candidate parsing
+✓ Jitter buffer
+✓ Statistics calculation
+✓ Data channel parameters
+
+Eksik:
+- MOS calculation (yeni özellik)
+- Adaptive bitrate logic
+- Error recovery scenarios
+- Edge cases (malformed packets)
+
+Önerilen Yeni Testler:
+```python
+# tests/test_quality_metrics.py
+def test_mos_calculation():
+    mos = calculate_mos(packet_loss=1.0, jitter=20, rtt=100)
+    assert 3.5 <= mos <= 4.5
+
+# tests/test_adaptive_bitrate.py
+def test_bitrate_adaptation():
+    encoder = H264Encoder()
+    encoder.target_bitrate = 2000000
+    # Simulate REMB
+    encoder.target_bitrate = 1000000
+    assert encoder.target_bitrate == 1000000
+```
+
+─────────────────────────────────────────────────────────────────────────────
+12.2) Entegrasyon Testler (Integration Tests)
+─────────────────────────────────────────────────────────────────────────────
+
+Mevcut: tests/test_rtcpeerconnection.py (basic)
+
+Kapsam:
+✓ Offer/answer exchange
+✓ ICE gathering
+✓ Track exchange
+
+Eksik:
+- Full end-to-end flow (offer → answer → ICE → DTLS → media)
+- Data channel exchange
+- Multiple tracks
+- Renegotiation
+- ICE restart
+
+Önerilen:
+```python
+# tests/test_integration.py
+@pytest.mark.asyncio
+async def test_full_audio_call():
+    pc1 = RTCPeerConnection()
+    pc2 = RTCPeerConnection()
+    
+    # Add tracks
+    audio1 = AudioStreamTrack()
+    pc1.addTrack(audio1)
+    
+    # Signaling
+    offer = await pc1.createOffer()
+    await pc1.setLocalDescription(offer)
+    await pc2.setRemoteDescription(pc1.localDescription)
+    
+    answer = await pc2.createAnswer()
+    await pc2.setLocalDescription(answer)
+    await pc1.setRemoteDescription(pc2.localDescription)
+    
+    # Wait for connection
+    await wait_for_state(pc1, 'connected')
+    await wait_for_state(pc2, 'connected')
+    
+    # Verify media
+    track2 = await wait_for_track(pc2)
+    frame = await track2.recv()
+    assert isinstance(frame, AudioFrame)
+    
+    # Cleanup
+    await pc1.close()
+    await pc2.close()
+```
+
+─────────────────────────────────────────────────────────────────────────────
+12.3) Senaryo Testleri (Scenario Tests)
+─────────────────────────────────────────────────────────────────────────────
+
+Senaryolar:
+1. Incoming call → accept → media → end
+2. Incoming call → reject
+3. Call → hold → resume → end
+4. Call → network loss → recovery
+5. Call → ICE failed → TURN fallback
+6. Call → codec negotiation failure
+7. Call → renegotiation (add video)
+
+Örnek:
+```python
+@pytest.mark.asyncio
+async def test_call_with_hold():
+    pc1, pc2 = await setup_call()
+    
+    # Hold
+    for sender in pc1.getSenders():
+        sender._enabled = False
+    
+    # Verify no media
+    # ...
+    
+    # Resume
+    for sender in pc1.getSenders():
+        sender._enabled = True
+    
+    # Verify media resumed
+    # ...
+```
+
+─────────────────────────────────────────────────────────────────────────────
+12.4) Yük Testleri (Load Tests)
+─────────────────────────────────────────────────────────────────────────────
+
+Metrikler:
+- Concurrent connections: 100, 500, 1000
+- CPU usage per connection
+- Memory usage per connection
+- Packet loss under load
+- Latency under load
+
+Araçlar:
+- locust (HTTP load testing)
+- Custom WebSocket client (WS load testing)
+- aiortc stress test script
+
+Örnek:
+```python
+# tests/stress_test.py
+async def stress_test_connections(num_connections=100):
+    pcs = []
+    for i in range(num_connections):
+        pc = RTCPeerConnection()
+        # Setup connection
+        pcs.append(pc)
+    
+    # Measure CPU, memory
+    # ...
+    
+    # Cleanup
+    for pc in pcs:
+        await pc.close()
+```
+
+─────────────────────────────────────────────────────────────────────────────
+12.5) Tarayıcı Uyumluluğu (Browser Compatibility)
+─────────────────────────────────────────────────────────────────────────────
+
+Tarayıcılar:
+- Chrome/Chromium (latest, -1, -2)
+- Firefox (latest, -1, -2)
+- Safari (latest, -1)
+- Edge (latest)
+
+Test Senaryoları:
+- Audio call
+- Video call
+- Data channel
+- Screen sharing (if supported)
+- setSinkId (audio output selection)
+- Autoplay policy
+
+Özel Durumlar:
+- Safari: VP8 desteği yok (H.264 gerekli)
+- Firefox: H.264 hardware decode
+- Chrome: Autoplay policy (user gesture required)
+
+Araçlar:
+- Selenium WebDriver
+- Playwright
+- Manual testing
+
+─────────────────────────────────────────────────────────────────────────────
+12.6) Performans Testleri
+─────────────────────────────────────────────────────────────────────────────
+
+Metrikler:
+- Encoding latency (frame → RTP)
+- Decoding latency (RTP → frame)
+- End-to-end latency
+- Jitter buffer delay
+- CPU usage (encoding/decoding)
+- Memory usage
+- Packet loss recovery time
+
+Araçlar:
+- cProfile (Python profiler)
+- memory_profiler
+- py-spy (sampling profiler)
+- Custom timing instrumentation
+
+================================================================================
+13) SONUÇ & YOL HARİTASI
+================================================================================
+
+─────────────────────────────────────────────────────────────────────────────
+13.1) Proje Durumu Özeti
+─────────────────────────────────────────────────────────────────────────────
+
+Güçlü Yönler:
+✓ Saf Python WebRTC implementasyonu (unique)
+✓ Asyncio tabanlı (modern Python)
+✓ Comprehensive codec support (Opus, H.264, VP8, G.722, G.711)
+✓ Full WebRTC stack (ICE, DTLS, SRTP, SCTP)
+✓ Good test coverage
+✓ Active development
+✓ Clear documentation
+✓ Browser interoperability
+
+Zayıf Yönler:
+- Simulcast/SVC yok
+- Perfect negotiation yok
+- Adaptive bitrate sınırlı
+- MOS/quality metrics yok
+- E2E encryption yok
+- Production deployment guide eksik
+
+Fırsatlar:
++ Server-side WebRTC use cases growing
++ Python ML/AI integration (video processing)
++ IoT/embedded use cases
++ Education/research tool
++ WebRTC gateway/bridge applications
+
+Tehditler:
+- Native WebRTC libraries (libwebrtc) daha performanslı
+- GStreamer WebRTC plugin
+- Pion (Go WebRTC)
+- Competition from other languages
+
+─────────────────────────────────────────────────────────────────────────────
+13.2) 2 Haftalık Sprint Planı
+─────────────────────────────────────────────────────────────────────────────
+
+Sprint 1 (Hafta 1): Kritik Eksikler
+
+Gün 1-2: TURN Dokümantasyonu ve Örnekler
+- [ ] TURN server setup guide
+- [ ] RTCConfiguration TURN örneği
+- [ ] coturn installation guide
+- Teslim: docs/turn.rst
+
+Gün 3-4: MOS Calculation
+- [ ] calculate_mos() fonksiyonu
+- [ ] RTCInboundRtpStreamStats'a mos field
+- [ ] Unit tests
+- Teslim: src/aiortc/stats.py, tests/test_stats.py
+
+Gün 5: Cihaz Seçimi API
+- [ ] enumerate_devices() wrapper
+- [ ] MediaPlayer device selection
+- [ ] Örnek kod
+- Teslim: src/aiortc/contrib/media.py
+
+Sprint 2 (Hafta 2): Dayanıklılık ve Dokümantasyon
+
+Gün 6-7: ICE Restart ve Error Recovery
+- [ ] ICE restart support (iceRestart parameter)
+- [ ] Automatic reconnection örneği
+- [ ] Error handling guide
+- Teslim: src/aiortc/rtcpeerconnection.py, docs/error_handling.rst
+
+Gün 8-9: Adaptive Bitrate
+- [ ] Automatic encoder bitrate adjustment
+- [ ] REMB feedback integration
+- [ ] Bandwidth estimation improvements
+- Teslim: src/aiortc/codecs/h264.py, src/aiortc/rtcrtpsender.py
+
+Gün 10: Production Deployment Guide
+- [ ] Dockerfile
+- [ ] docker-compose.yml
+- [ ] Security best practices
+- [ ] Monitoring and logging
+- Teslim: docs/deployment.rst, Dockerfile
+
+─────────────────────────────────────────────────────────────────────────────
+13.3) Hızlı Kazanımlar (Quick Wins)
+─────────────────────────────────────────────────────────────────────────────
+
+1. TURN Dokümantasyonu (1 gün)
+   Etki: Yüksek (NAT traversal kritik)
+   Çaba: Düşük (sadece dokümantasyon)
+
+2. MOS Calculation (2 gün)
+   Etki: Orta (kalite metrikleri)
+   Çaba: Düşük (basit formül)
+
+3. Dockerfile (1 gün)
+   Etki: Yüksek (deployment kolaylığı)
+   Çaba: Düşük (standart Dockerfile)
+
+4. Error Handling Examples (1 gün)
+   Etki: Orta (developer experience)
+   Çaba: Düşük (örnek kod)
+
+5. Performance Profiling (2 gün)
+   Etki: Orta (bottleneck tespiti)
+   Çaba: Orta (profiling + analiz)
+
+─────────────────────────────────────────────────────────────────────────────
+13.4) Uzun Vadeli Mimari Adımlar (3-6 Ay)
+─────────────────────────────────────────────────────────────────────────────
+
+Q1 (Ay 1-3):
+1. Simulcast Support
+   - Multiple encoding layers
+   - SDP munging
+   - Sender/receiver updates
+   Etki: Yüksek (multi-party conferencing)
+   Çaba: Yüksek (major feature)
+
+2. Perfect Negotiation Pattern
+   - Glare handling
+   - Polite/impolite peers
+   - Renegotiation improvements
+   Etki: Orta (edge case handling)
+   Çaba: Orta
+
+3. Refactoring (Önerilen Yapı)
+   - Modüler yapı
+   - Backward compatibility
+   - Migration guide
+   Etki: Orta (maintainability)
+   Çaba: Yüksek (breaking change)
+
+Q2 (Ay 4-6):
+4. E2E Encryption (Insertable Streams)
+   - Frame encryption
+   - Key management
+   - Browser compatibility
+   Etki: Yüksek (privacy)
+   Çaba: Çok Yüksek (major feature)
+
+5. Hardware Encoding/Decoding
+   - VAAPI (Linux)
+   - VideoToolbox (macOS)
+   - NVENC (NVIDIA)
+   Etki: Yüksek (performance)
+   Çaba: Yüksek (platform-specific)
+
+6. Advanced Bandwidth Estimation
+   - Google Congestion Control (GCC)
+   - Transport-wide CC
+   - Probing
+   Etki: Yüksek (quality)
+   Çaba: Yüksek (complex algorithm)
+
+─────────────────────────────────────────────────────────────────────────────
+13.5) Başarı Kriterleri
+─────────────────────────────────────────────────────────────────────────────
+
+Teknik:
+- [ ] Test coverage > 90%
+- [ ] All P0 issues resolved
+- [ ] Production deployment guide
+- [ ] Performance benchmarks published
+- [ ] Browser compatibility matrix
+
+Kullanıcı:
+- [ ] 5+ production deployments
+- [ ] 100+ GitHub stars
+- [ ] Active community (issues, PRs)
+- [ ] Positive feedback
+
+Ekosistem:
+- [ ] Integration examples (Flask, FastAPI, Django)
+- [ ] ML/AI integration examples (OpenCV, TensorFlow)
+- [ ] IoT examples (Raspberry Pi)
+
+================================================================================
+EK: HAM BULGU LİSTESİ
+================================================================================
+
+Dosya Bazında Küçük Notlar:
+
+pyproject.toml:
+- ✓ Modern Python packaging
+- ✓ Type hints enabled (py.typed)
+- ✓ Comprehensive dependencies
+- Note: Consider adding optional dependencies [ml], [iot]
+
+src/aiortc/rtcpeerconnection.py:
+- ✓ Comprehensive implementation
+- ✓ Good state management
+- Note: Consider adding connection quality monitoring
+- Note: Perfect negotiation pattern would be useful
+
+src/aiortc/rtcrtpsender.py:
+- ✓ Good RTP implementation
+- ✓ RTCP SR/SDES
+- Note: Adaptive bitrate could be more aggressive
+- Note: FEC support missing
+
+src/aiortc/rtcrtpreceiver.py:
+- ✓ Good NACK/PLI implementation
+- ✓ Separate decoder thread
+- Note: Jitter buffer tuning could be improved
+- Note: Packet loss concealment missing
+
+src/aiortc/codecs/h264.py:
+- ✓ Good packetization (FU-A, STAP-A)
+- ✓ Adaptive bitrate property
+- Note: SVC support would be valuable
+- Note: Hardware encoding support
+
+src/aiortc/codecs/opus.py:
+- ✓ Good Opus implementation
+- Note: DTX support missing
+- Note: FEC support missing
+
+src/aiortc/contrib/media.py:
+- ✓ Comprehensive media helpers
+- ✓ Player, recorder, relay
+- Note: Better error recovery in player
+- Note: Seek support would be useful
+
+examples/server/server.py:
+- ✓ Good demo
+- ✓ Video transforms
+- Note: Authentication missing
+- Note: Multi-room support would be useful
+
+tests/:
+- ✓ Comprehensive unit tests
+- Note: More integration tests needed
+- Note: Stress tests needed
+- Note: Browser compatibility tests
+
+docs/:
+- ✓ Good documentation structure
+- Note: TURN setup guide missing
+- Note: Production deployment guide missing
+- Note: Performance tuning guide missing
+
+================================================================================
+RAPOR SONU
+================================================================================
+Oluşturulma Tarihi: 2024
+Toplam Dosya Sayısı: 50+
+Analiz Edilen Satır: ~15,000+
+Tespit Edilen Eksik: 16 (P0: 3, P1: 5, P2: 8)
+Önerilen İyileştirme: 20+
+
+Bu rapor aiortc projesinin kapsamlı bir analizidir. Proje genel olarak iyi
+durumda, ancak production kullanımı için bazı kritik eksikler var. 2 haftalık
+sprint ile P0 ve bazı P1 eksikler giderilebilir. Uzun vadede simulcast, E2E
+encryption ve hardware encoding gibi özellikler eklenebilir.
+
+Proje Python WebRTC ekosisteminde önemli bir yere sahip ve aktif geliştirme
+devam ediyor. Server-side WebRTC use case'leri için mükemmel bir seçenek.

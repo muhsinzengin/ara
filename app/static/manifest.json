@@ -1,0 +1,16 @@
+{
+  "name": "Canlı Destek",
+  "short_name": "Destek",
+  "description": "Görüntülü ve sesli canlı destek sistemi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#4CAF50",
+  "theme_color": "#4CAF50",
+  "icons": [
+    {
+      "src": "/static/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
