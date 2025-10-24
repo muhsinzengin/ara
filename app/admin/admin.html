@@ -1,192 +1,391 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1976D2">
-    <meta name="mobile-web-app-capable" content="yes">
-    <title>Admin Paneli</title>
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="manifest" href="/static/manifest.json">
-    <link rel="stylesheet" href="/admin/css/style.css">
-    <link rel="stylesheet" href="/admin/css/call-screen.css">
-    <link rel="stylesheet" href="/admin/css/notifications.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Admin Panel • Canlı Destek</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#0a0e1a; --card:#0f1629; --elev:#1a1f35; --text:#e5e7eb; --muted:#64748b; --border:#1e293b;
+      --primary:#6366f1; --primary-dark:#4f46e5; --success:#10b981; --danger:#ef4444; --warn:#f59e0b; 
+      --gradient:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+    }
+    *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
+    body{font-family:Inter, system-ui, sans-serif; background:var(--bg); color:var(--text); overflow-x:hidden; padding-bottom:20px}
+
+    /* Header */
+    .hdr{position:sticky; top:0; z-index:100; background:rgba(11,18,32,.95); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); box-shadow:0 2px 12px rgba(0,0,0,.3)}
+    .hdr__row{display:flex; align-items:center; justify-content:space-between; padding:12px 14px}
+    .brand{display:flex; align-items:center; gap:8px; font-weight:800; font-size:14px}
+    .pulse{width:9px; height:9px; border-radius:50%; background:var(--success); animation:pulse 2s infinite; box-shadow:0 0 10px var(--success)}
+    @keyframes pulse{0%,100%{transform:scale(1); opacity:1} 50%{transform:scale(1.2); opacity:.7}}
+    .status{font-size:10px; color:var(--muted); background:var(--elev); padding:3px 8px; border-radius:6px; border:1px solid var(--border)}
+
+    /* Main */
+    .main{padding:12px; max-width:100%; padding-top:0}
+    
+    /* KPI Cards */
+    .kpi-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:14px}
+    .kpi{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px; position:relative; overflow:hidden; transition:transform .2s}
+    .kpi:active{transform:scale(.97)}
+    .kpi::before{content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--gradient)}
+    .kpi__val{font-size:24px; font-weight:800; margin:6px 0 3px; background:var(--gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent; line-height:1}
+    .kpi__lbl{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; font-weight:600; line-height:1.2}
+    .kpi__trend{font-size:9px; color:var(--success); margin-top:4px; line-height:1}
+
+    /* Section */
+    .sec{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,.2)}
+    .sec__hdr{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border)}
+    .sec__ttl{display:flex; align-items:center; gap:6px; font-weight:700; font-size:14px}
+    .badge{font-size:10px; color:var(--muted); background:var(--elev); padding:3px 8px; border-radius:6px; font-weight:600}
+
+    /* Call Cards */
+    .list{display:flex; flex-direction:column; gap:8px}
+    .call{background:var(--elev); border:1px solid var(--border); border-radius:12px; padding:10px; transition:all .2s; position:relative}
+    .call:active{transform:scale(.99)}
+    .call--active{border-color:var(--success); box-shadow:0 0 0 1px var(--success)}
+    .call__hdr{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+    .info{display:flex; align-items:center; gap:10px; flex:1}
+    .ava{width:40px; height:40px; border-radius:10px; display:grid; place-items:center; background:var(--gradient); font-size:18px; box-shadow:0 2px 8px rgba(99,102,241,.3)}
+    .call__name{font-weight:700; font-size:13px; margin-bottom:2px}
+    .call__state{font-size:10px; color:var(--muted); display:flex; align-items:center; gap:6px}
+    .dot-active{width:5px; height:5px; border-radius:50%; background:var(--success); display:inline-block}
+    
+    /* Controls */
+    .controls{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px}
+    .btn{height:42px; border-radius:10px; border:1px solid var(--border); background:rgba(255,255,255,.04); color:var(--text); display:grid; place-items:center; font-size:18px; transition:all .2s; cursor:pointer; touch-action:manipulation}
+    .btn:active{transform:scale(.95); background:rgba(255,255,255,.08)}
+    .btn--danger{background:var(--danger); border-color:var(--danger); color:#fff; box-shadow:0 2px 8px rgba(239,68,68,.3)}
+    .btn--active{background:rgba(99,102,241,.2); border-color:var(--primary); color:var(--primary)}
+    
+    /* Queue */
+    .queue-item{display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--elev); border:1px solid var(--border); border-radius:12px; padding:10px}
+    .queue-num{width:30px; height:30px; border-radius:8px; background:rgba(99,102,241,.15); color:var(--primary); display:grid; place-items:center; font-weight:800; font-size:13px}
+    .queue-info{flex:1; min-width:0}
+    .queue-name{font-weight:600; font-size:13px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .queue-wait{font-size:10px; color:var(--muted)}
+    .btn-accept{padding:8px 16px; border:none; border-radius:8px; background:var(--primary); color:#fff; font-weight:700; font-size:12px; cursor:pointer; transition:all .2s; box-shadow:0 2px 8px rgba(99,102,241,.3); white-space:nowrap; touch-action:manipulation}
+    .btn-accept:active{transform:scale(.95)}
+
+    .empty{padding:20px; text-align:center; color:var(--muted); font-size:12px}
+    
+    /* History Item */
+    .history-item{background:var(--elev); border:1px solid var(--border); border-radius:12px; padding:10px; display:flex; align-items:center; gap:10px}
+    .history-icon{width:38px; height:38px; border-radius:9px; display:grid; place-items:center; font-size:16px; flex-shrink:0}
+    .history-icon.incoming{background:rgba(16,185,129,.15); color:var(--success)}
+    .history-details{flex:1; min-width:0}
+    .history-name{font-weight:700; font-size:13px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .history-meta{font-size:10px; color:var(--muted); display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+    .history-duration{background:var(--card); padding:2px 6px; border-radius:5px; font-weight:600}
+    
+    /* Toast */
+    .toast{position:fixed; left:12px; right:12px; top:75px; background:var(--card); border:1px solid var(--success); border-radius:10px; padding:10px 12px; z-index:999; box-shadow:0 6px 20px rgba(0,0,0,.4); animation:slideIn .3s; font-size:12px; font-weight:600}
+    @keyframes slideIn{from{transform:translateY(-20px); opacity:0} to{transform:translateY(0); opacity:1}}
+    
+    /* Connection Status */
+    .conn-status{position:fixed; bottom:16px; right:16px; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:6px 12px; font-size:10px; box-shadow:0 2px 8px rgba(0,0,0,.3); z-index:50}
+    .conn-status.online{border-color:var(--success); color:var(--success)}
+    .conn-status.offline{border-color:var(--danger); color:var(--danger)}
+    
+    audio{display:none}
+
+    /* OTP Screen */
+    .otp-screen{position:fixed; inset:0; background:var(--bg); display:grid; place-items:center; z-index:1000}
+    .otp-box{background:var(--card); border:1px solid var(--border); border-radius:20px; padding:40px 30px; max-width:400px; width:90%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,.5)}
+    .otp-box h1{font-size:24px; margin:20px 0 10px; background:var(--gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent}
+    .subtitle{color:var(--muted); font-size:14px; margin-bottom:30px}
+    .otp-btn{width:100%; padding:14px; border:none; border-radius:10px; background:var(--primary); color:#fff; font-weight:700; font-size:14px; cursor:pointer; transition:all .2s; margin-top:10px}
+    .otp-btn:active{transform:scale(.98)}
+    #otpInput{width:100%; padding:14px; border:1px solid var(--border); border-radius:10px; background:var(--elev); color:var(--text); font-size:20px; text-align:center; letter-spacing:8px; font-weight:700; margin-top:20px}
+    .hidden{display:none !important}
+    .error-text{color:var(--danger); font-size:12px; margin-top:10px}
+  </style>
 </head>
 <body>
-    <div id="otpScreen" class="otp-screen">
-        <div class="otp-box">
-            <div class="logo">
-                <div style="font-size: 80px;">🔐</div>
-            </div>
-            <h1>Admin Panele Giriş</h1>
-            <p class="subtitle">Telegram'dan OTP kodunu alın</p>
-            <button id="requestOtpBtn" class="otp-btn">Şifre İste 📱</button>
-            <div id="otpInputSection" class="hidden">
-                <input type="text" id="otpInput" placeholder="6 haneli kod" maxlength="6" inputmode="numeric"/>
-                <button id="verifyOtpBtn" class="otp-btn">Giriş Yap 🔓</button>
-            </div>
-            <p id="otpError" class="error-text hidden"></p>
-        </div>
+  <!-- OTP Screen -->
+  <div id="otpScreen" class="otp-screen">
+    <div class="otp-box">
+      <div style="font-size:80px">🔐</div>
+      <h1>Admin Panele Giriş</h1>
+      <p class="subtitle">Telegram'dan OTP kodunu alın</p>
+      <button id="requestOtpBtn" class="otp-btn">Şifre İste 📱</button>
+      <div id="otpInputSection" class="hidden">
+        <input type="text" id="otpInput" placeholder="000000" maxlength="6" inputmode="numeric"/>
+        <button id="verifyOtpBtn" class="otp-btn">Giriş Yap 🔓</button>
+      </div>
+      <p id="otpError" class="error-text hidden"></p>
     </div>
-    
-    <div id="dashboardScreen" class="dashboard-screen hidden">
-        <div class="dashboard-header">
-            <h2>📊 Admin Paneli</h2>
-            <div style="display: flex; gap: 10px;">
-                <button id="checkPermissionsBtn" class="check-permissions-btn" title="Kamera/Mikrofon İzinlerini Kontrol Et">🎥🎤</button>
-                <button id="logoutBtn" class="logout-btn">Çıkış</button>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h3 style="text-align: center;">👥 Kullanıcılar</h3>
-            <div id="bulkActionsContainer" class="bulk-actions-container hidden">
-                <button class="bulk-delete-btn" id="bulkDeleteBtn" disabled>Seçilenleri Sil 🗑️</button>
-                <button class="clear-all-btn" id="clearAllBtn">Tümünü Temizle 🧹</button>
-                <button class="clear-calls-btn" id="clearCallsBtn">Tüm Çağrıları Temizle 🗑️</button>
-            </div>
-            <div id="onlineUsers" class="online-users">
-                <p class="empty-state">Kullanıcı yok</p>
-            </div>
-        </div>
-        
-        <div class="stats-container">
-            <div class="stat-card">
-                <div class="stat-icon">📞</div>
-                <div class="stat-value" id="statToday">0</div>
-                <div class="stat-label">Bugün</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📅</div>
-                <div class="stat-value" id="statWeek">0</div>
-                <div class="stat-label">Bu Hafta</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📆</div>
-                <div class="stat-value" id="statMonth">0</div>
-                <div class="stat-label">Bu Ay</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">🎯</div>
-                <div class="stat-value" id="statYear">0</div>
-                <div class="stat-label">Bu Yıl</div>
-            </div>
-        </div>
-        
-        <div class="section">
-            <h3>📋 Görüşme Geçmişi</h3>
-            <div class="filter-tabs">
-                <button class="tab-btn active" data-filter="all">Tümü</button>
-                <button class="tab-btn" data-filter="today">Bugün</button>
-                <button class="tab-btn" data-filter="week">Bu Hafta</button>
-                <button class="tab-btn" data-filter="month">Bu Ay</button>
-            </div>
-            <div id="callHistory" class="call-history">
-                <p class="empty-state">Görüşme geçmişi yok</p>
-            </div>
-        </div>
-    </div>
-    
-    <div id="callScreen" class="call-screen hidden">
-        <div class="call-header">
-            <div class="status">
-                <span class="status-dot"></span>
-                <span id="statusText">Görüşme</span>
-            </div>
-            <div class="timer" id="timer">00:00</div>
-        </div>
-        
-        <div class="video-container">
-            <button id="fullscreenBtn" class="fullscreen-btn" title="Tam Ekran">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-                </svg>
-            </button>
-            <video id="remoteVideo" autoplay playsinline></video>
-            <div id="pipCamera" class="pip-camera">
-                <video id="localVideo" autoplay playsinline muted></video>
-            </div>
-            <div id="customerInfo" class="customer-info">
-                <p id="customerName">Kullanıcı</p>
-            </div>
-            <div id="webrtcStats" class="webrtc-stats">
-                <!-- WebRTC istatistikleri burada gösterilecek -->
-            </div>
+  </div>
 
-            <!-- Kalite Uyarı Paneli -->
-            <div id="qualityAlert" class="quality-alert hidden">
-                <!-- Uyarı içeriği dinamik olarak eklenecek -->
-            </div>
+  <!-- Dashboard -->
+  <div id="dashboardScreen" class="hidden">
+    <header class="hdr">
+      <div class="hdr__row">
+        <div class="brand">
+          <span class="pulse"></span>
+          <span>Canlı Destek Admin</span>
         </div>
-        
-        <div class="controls">
-            <button class="control-btn btn-mic" id="micBtn" data-label="Mikrofon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                </svg>
-            </button>
-            <button class="control-btn btn-video" id="videoBtn" data-label="Kamera">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-                </svg>
-            </button>
-            <button class="control-btn btn-speaker" id="speakerBtn" data-label="Hoparlör">
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
-                    <path d="M3 9v6h4l5 5V4L7 9H3z"/>
-                    <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-                    <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                </svg>
-            </button>
-            <button class="control-btn btn-transfer" id="transferBtn" data-label="Transfer">
-                <span style="font-size: 28px;">👥</span>
-            </button>
-            <button class="control-btn btn-proximity-sensor" id="audioSettingsBtn" data-label="Yakınlık Sensörü">
-                <span style="font-size: 28px;">👂</span>
-            </button>
-            <button class="control-btn btn-end" id="endBtn" data-label="Kapat">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                    <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.68-1.36-2.66-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
-                </svg>
-            </button>
+        <div class="status" id="serverStatus">●●●</div>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi__lbl">Aktif Görüşme</div>
+          <div id="kActive" class="kpi__val">0</div>
+          <div class="kpi__trend">↑ Canlı</div>
         </div>
+        <div class="kpi">
+          <div class="kpi__lbl">Kuyrukta</div>
+          <div id="kQueue" class="kpi__val">0</div>
+          <div class="kpi__trend">Bekliyor</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__lbl">Bugün</div>
+          <div id="kToday" class="kpi__val">0</div>
+          <div class="kpi__trend">Toplam</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi__lbl">Bu Hafta</div>
+          <div id="kWeek" class="kpi__val">0</div>
+          <div class="kpi__trend">Toplam</div>
+        </div>
+      </div>
+
+      <!-- Active Calls -->
+      <section class="sec">
+        <div class="sec__hdr">
+          <div class="sec__ttl">📞 Aktif Görüşmeler</div>
+          <div class="badge" id="lblActive">0 aktif</div>
+        </div>
+        <div id="activeList" class="list">
+          <div class="empty">Henüz aktif görüşme yok</div>
+        </div>
+      </section>
+
+      <!-- Queue -->
+      <section class="sec">
+        <div class="sec__hdr">
+          <div class="sec__ttl">👥 Bekleyen Kuyruk</div>
+          <div class="badge" id="lblQueue">0 bekliyor</div>
+        </div>
+        <div id="queueList" class="list">
+          <div class="empty">Kuyruk boş</div>
+        </div>
+      </section>
+
+      <!-- History -->
+      <section class="sec">
+        <div class="sec__hdr">
+          <div class="sec__ttl">📋 Görüşme Geçmişi</div>
+          <div class="badge" id="historyCount">0 kayıt</div>
+        </div>
+        <div id="historyContainer" style="display:flex; flex-direction:column; gap:8px">
+          <div class="empty">Henüz görüşme kaydı yok</div>
+        </div>
+      </section>
+    </main>
+
+    <div class="conn-status online" id="connStatus">
+      <span>●</span> Bağlı
     </div>
+  </div>
+
+  <audio id="remoteAudio" autoplay></audio>
+
+  <script src="/static/js/signaling.js"></script>
+  <script>
+    const $ = (s) => document.querySelector(s);
     
-    <div id="incomingCallNotification" class="incoming-call-notification hidden">
-        <div class="notification-content">
-            <div class="notification-icon">📞</div>
-            <h3>Gelen Arama</h3>
-            <p id="incomingCallerName">Kullanıcı</p>
-            <div class="notification-buttons">
-                <button id="acceptCallBtn" class="accept-btn">Kabul Et ✅</button>
-                <button id="rejectCallBtn" class="reject-btn">Reddet ❌</button>
-            </div>
-        </div>
-    </div>
+    class AdminPanel {
+      constructor() {
+        this.callId = null;
+        this.active = new Map();
+        this.queue = [];
+        this.history = [];
+        this.init();
+      }
 
-    <!-- Transfer Modal -->
-    <div id="transferModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Çağrıyı Transfer Et</h3>
-                <span class="modal-close" id="transferModalClose">&times;</span>
-            </div>
-            <div class="modal-body">
-                <p>Çağrıyı hangi admin'e transfer etmek istiyorsunuz?</p>
-                <select id="adminSelect" class="admin-select">
-                    <option value="">Admin seçin...</option>
-                </select>
-            </div>
-            <div class="modal-footer">
-                <button id="transferConfirmBtn" class="transfer-confirm-btn">Transfer Et</button>
-                <button id="transferCancelBtn" class="transfer-cancel-btn">İptal</button>
-            </div>
-        </div>
-    </div>
+      async init() {
+        this.wireOTP();
+        this.loadDemoData();
+        this.updateUI();
+        setInterval(() => this.updateUI(), 5000);
+      }
 
-    <script src="/admin/js/notifications.js"></script>
-    <script src="/admin/js/admin.js"></script>
-    <script src="/static/js/quality_monitor.js"></script>
-    <script src="/static/js/signaling_pro.js"></script>
+      wireOTP() {
+        $('#requestOtpBtn').onclick = async () => {
+          try {
+            const res = await fetch('/api/request-admin-otp', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+              this.callId = data.callId;
+              $('#otpInputSection').classList.remove('hidden');
+              $('#otpInput').focus();
+              this.toast('OTP Telegram\'a gönderildi!');
+            }
+          } catch (err) {
+            this.showError('Bağlantı hatası');
+          }
+        };
+
+        $('#verifyOtpBtn').onclick = async () => {
+          const otp = $('#otpInput').value.trim();
+          if (otp.length !== 6) {
+            this.showError('6 haneli kod girin');
+            return;
+          }
+
+          try {
+            const res = await fetch('/api/verify-otp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ otp, callId: this.callId })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+              $('#otpScreen').classList.add('hidden');
+              $('#dashboardScreen').classList.remove('hidden');
+              this.toast('Giriş başarılı!');
+            } else {
+              this.showError(data.error || 'Geçersiz OTP');
+            }
+          } catch (err) {
+            this.showError('Doğrulama hatası');
+          }
+        };
+      }
+
+      showError(msg) {
+        $('#otpError').textContent = msg;
+        $('#otpError').classList.remove('hidden');
+        setTimeout(() => $('#otpError').classList.add('hidden'), 3000);
+      }
+
+      loadDemoData() {
+        // Demo aktif görüşmeler
+        this.active.set('demo-1', {
+          name: 'Ahmet Yılmaz',
+          start: Date.now() - 120000
+        });
+        this.active.set('demo-2', {
+          name: 'Ayşe Demir',
+          start: Date.now() - 45000
+        });
+
+        // Demo kuyruk
+        this.queue = [
+          { id: 'q1', name: 'Mehmet Kaya', at: Date.now() - 30000 },
+          { id: 'q2', name: 'Zeynep Öz', at: Date.now() - 15000 }
+        ];
+
+        // Demo geçmiş
+        this.history = [
+          { name: 'Can Arslan', duration: 245, timestamp: Date.now() - 3600000 },
+          { name: 'Selin Koç', duration: 532, timestamp: Date.now() - 7200000 }
+        ];
+      }
+
+      updateUI() {
+        // KPIs
+        $('#kActive').textContent = this.active.size;
+        $('#kQueue').textContent = this.queue.length;
+        $('#kToday').textContent = this.history.length;
+        $('#kWeek').textContent = this.history.length;
+
+        // Active
+        $('#lblActive').textContent = `${this.active.size} aktif`;
+        const activeBox = $('#activeList');
+        if (this.active.size === 0) {
+          activeBox.innerHTML = '<div class="empty">Henüz aktif görüşme yok</div>';
+        } else {
+          activeBox.innerHTML = [...this.active.entries()].map(([id, call]) => `
+            <div class="call call--active">
+              <div class="call__hdr">
+                <div class="info">
+                  <div class="ava">👤</div>
+                  <div>
+                    <div class="call__name">${call.name}</div>
+                    <div class="call__state">
+                      <span class="dot-active"></span>
+                      Görüşmede · ${this.formatDuration(Math.floor((Date.now() - call.start) / 1000))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="controls">
+                <button class="btn">🎤</button>
+                <button class="btn">🔊</button>
+                <button class="btn">🔇</button>
+                <button class="btn btn--danger">✖</button>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        // Queue
+        $('#lblQueue').textContent = `${this.queue.length} bekliyor`;
+        const queueBox = $('#queueList');
+        if (this.queue.length === 0) {
+          queueBox.innerHTML = '<div class="empty">Kuyruk boş</div>';
+        } else {
+          queueBox.innerHTML = this.queue.map((call, idx) => `
+            <div class="queue-item">
+              <div class="queue-num">${idx + 1}</div>
+              <div class="queue-info">
+                <div class="queue-name">${call.name}</div>
+                <div class="queue-wait">${Math.floor((Date.now() - call.at) / 1000)} saniye bekliyor</div>
+              </div>
+              <button class="btn-accept">Cevapla</button>
+            </div>
+          `).join('');
+        }
+
+        // History
+        $('#historyCount').textContent = `${this.history.length} kayıt`;
+        const histBox = $('#historyContainer');
+        if (this.history.length === 0) {
+          histBox.innerHTML = '<div class="empty">Henüz görüşme kaydı yok</div>';
+        } else {
+          histBox.innerHTML = this.history.map(call => `
+            <div class="history-item">
+              <div class="history-icon incoming">📞</div>
+              <div class="history-details">
+                <div class="history-name">${call.name}</div>
+                <div class="history-meta">
+                  <span>${new Date(call.timestamp).toLocaleDateString('tr-TR')}</span>
+                  <span>•</span>
+                  <span class="history-duration">⏱️ ${this.formatDuration(call.duration)}</span>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+
+      formatDuration(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${String(s).padStart(2, '0')}`;
+      }
+
+      toast(message) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      window.adminPanel = new AdminPanel();
+    });
+  </script>
 </body>
 </html>
