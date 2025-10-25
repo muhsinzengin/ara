@@ -1,216 +1,196 @@
-// Admin Main Controller - Güvenli ve optimize edilmiş
+// Admin Main Controller - CSRF Protected
+const $ = (id) => document.getElementById(id.startsWith('#') ? id.substring(1) : id);
 
-// Safe DOM selector
-const $ = (id) => {
-  // Remove # if present
-  const cleanId = id.startsWith('#') ? id.substring(1) : id;
-  const element = document.getElementById(cleanId);
-  // Don't log error for optional elements
-  if (!element) {
-    return null;
+class AdminPanel {
+  constructor() {
+    this.sessionData = null;
+    this.active = new Map();
+    this.init();
   }
-  return element;
-};
 
-
-  loadSettingsPlaceholder();
+  init() {
+    this.loadSession();
+    this.bindEvents();
+    this.startPolling();
+  }
 
   bindEvents() {
-    // OTP sistemi
-    const requestOtpBtn = $('#requestOtpBtn');
-    const verifyOtpBtn = $('#verifyOtpBtn');
-    const otpInput = $('#otpInput');
-    
-    if (requestOtpBtn) requestOtpBtn.onclick = () => this.requestOTP();
-    if (verifyOtpBtn) verifyOtpBtn.onclick = () => this.verifyOTP();
-    if (otpInput) {
-      otpInput.onkeypress = (e) => {
-        if (e.key === 'Enter') this.verifyOTP();
-      };
-    }
-
-    // Theme toggle
-    const themeToggle = $('#themeToggle');
-    if (themeToggle) {
-      themeToggle.onclick = () => this.toggleTheme();
-    }
-
-    // Arama kontrolleri
-    const autoAcceptToggle = $('#autoAcceptToggle');
-    if (autoAcceptToggle) autoAcceptToggle.onclick = () => this.toggleAutoAccept();
-
-    // Temizlik butonları (optional - may not exist in HTML)
-    const clearActiveBtn = $('#clearActiveBtn');
-    const clearHistoryBtn = $('#clearHistoryBtn');
-    if (clearActiveBtn) clearActiveBtn.onclick = () => this.clearActiveCalls();
-    if (clearHistoryBtn) clearHistoryBtn.onclick = () => this.clearHistory();
-    
-    // Call control buttons
-    const fullVideoBtn = $('#fullVideoBtn');
-    const fullMicBtn = $('#fullMicBtn');
-    const fullSpeakerBtn = $('#fullSpeakerBtn');
-    const fullEndBtn = $('#fullEndBtn');
-    
-    if (fullVideoBtn) fullVideoBtn.onclick = () => this.toggleVideo();
-    if (fullMicBtn) fullMicBtn.onclick = () => this.toggleMic();
-    if (fullSpeakerBtn) fullSpeakerBtn.onclick = () => this.toggleSpeaker();
-    if (fullEndBtn) fullEndBtn.onclick = () => this.endCall();
-
-    // Ses ayarları
-    this.bindAudioSettings();
-
-    // Opus codec ayarları
-    this.bindCodecSettings();
+    $('#requestOtpBtn')?.addEventListener('click', () => this.requestOTP());
+    $('#verifyOtpBtn')?.addEventListener('click', () => this.verifyOTP());
+    $('#otpInput')?.addEventListener('keypress', (e) => e.key === 'Enter' && this.verifyOTP());
   }
 
-  toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('admin-theme', newTheme);
-    
-    // Update theme icon
-    const themeIcon = document.querySelector('.theme-icon');
-    if (themeIcon) {
-      themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
-    }
-  }
-
-  loadTheme() {
-    const savedTheme = localStorage.getItem('admin-theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    
-    // Update theme icon
-    const themeIcon = document.querySelector('.theme-icon');
-    if (themeIcon) {
-      themeIcon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
-    }
-  }
-
-  bindAudioSettings() {
-    const micVolume = document.getElementById("micVolume");
-    if (micVolume) {
-      micVolume.oninput = (e) => { this.saveSettings && this.saveSettings(); };
-    }
-
-    const speakerVolume = document.getElementById("speakerVolume");
-    if (speakerVolume) {
-      speakerVolume.oninput = (e) => { this.saveSettings && this.saveSettings(); };
-    }
-
-    ["toggleNoiseSuppression", "toggleEchoCancellation", "toggleAutoGain"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.onclick = () => {
-          el.classList.toggle("on");
-          el.textContent = el.classList.contains('on') ? 'Açık' : 'Kapalı';
-          this.updateAudioConstraints();
-        };
-        // initialize label
-        el.textContent = el.classList.contains('on') ? 'Açık' : 'Kapalı';
+  async requestOTP() {
+    try {
+      const res = await fetch('/api/request-admin-otp', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        $('#otpInputSection').classList.remove('hidden');
+        $('#otpInput').dataset.callId = data.callId;
+        $('#otpInput').focus();
       }
+    } catch (err) {
+      console.error('OTP request error:', err);
+    }
+  }
+
+  async verifyOTP() {
+    const otp = $('#otpInput').value.trim();
+    const callId = $('#otpInput').dataset.callId;
+
+    if (!otp || otp.length !== 6) {
+      this.showError('6 haneli OTP girin');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp, callId })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        this.sessionData = {
+          callId: data.callId,
+          csrfToken: data.csrfToken,
+          expires: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString()
+        };
+        localStorage.setItem('adminSession', JSON.stringify(this.sessionData));
+        this.showDashboard();
+      } else {
+        this.showError(data.error || 'Geçersiz OTP');
+      }
+    } catch (err) {
+      console.error('OTP verify error:', err);
+      this.showError('Bağlantı hatası');
+    }
+  }
+
+  showError(message) {
+    const errorEl = $('#otpError');
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    }
+  }
+
+  loadSession() {
+    const sessionData = localStorage.getItem('adminSession');
+    if (!sessionData) return false;
+
+    try {
+      const session = JSON.parse(sessionData);
+      if (new Date(session.expires) > new Date()) {
+        this.sessionData = session;
+        this.showDashboard();
+        return true;
+      } else {
+        localStorage.removeItem('adminSession');
+      }
+    } catch (err) {
+      localStorage.removeItem('adminSession');
+    }
+    return false;
+  }
+
+  showDashboard() {
+    $('#otpScreen').classList.add('hidden');
+    $('#dashboardScreen').classList.remove('hidden');
+    this.loadRealData();
+  }
+
+  logout() {
+    localStorage.removeItem('adminSession');
+    this.sessionData = null;
+    location.reload();
+  }
+
+  async apiCall(url, options = {}) {
+    if (!this.sessionData) throw new Error('No session');
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Call-ID': this.sessionData.callId,
+      'X-CSRF-Token': this.sessionData.csrfToken,
+      ...options.headers
+    };
+
+    return fetch(url, { ...options, headers });
+  }
+
+  async loadRealData() {
+    try {
+      const res = await this.apiCall('/api/active-calls');
+      const data = await res.json();
+
+      if (data.success && data.active_calls) {
+        this.updateActiveCalls(data.active_calls);
+      }
+    } catch (err) {
+      console.error('Load data error:', err);
+    }
+  }
+
+  updateActiveCalls(calls) {
+    this.active.clear();
+    calls.forEach(call => {
+      this.active.set(call.call_id, {
+        id: call.call_id,
+        name: call.customer_name,
+        status: call.status,
+        timestamp: call.formatted_time
+      });
     });
 
-    const micDevice = document.getElementById("micDevice");
-    if (micDevice) micDevice.onchange = () => this.changeAudioDevice("audioinput");
-    const speakerDevice = document.getElementById("speakerDevice");
-    if (speakerDevice) speakerDevice.onchange = () => this.changeAudioDevice("audiooutput");
+    const activeCount = Array.from(this.active.values()).filter(c => c.status !== 'waiting').length;
+    const queueCount = Array.from(this.active.values()).filter(c => c.status === 'waiting').length;
+
+    $('#lblActive').textContent = activeCount;
+    $('#lblQueue').textContent = queueCount;
   }
-  bindCodecSettings() {
-    const codecAuto = document.getElementById("codecAuto");
-    if (codecAuto) codecAuto.onclick = () => this.setCodecMode("auto");
-    const codecManual = document.getElementById("codecManual");
-    if (codecManual) codecManual.onclick = () => this.setCodecMode("manual");
 
-    const codecBitrate = document.getElementById("codecBitrate");
-    if (codecBitrate) {
-      codecBitrate.oninput = (e) => { this.saveSettings && this.saveSettings(); };
-    }
+  startPolling() {
+    setInterval(() => this.loadRealData(), 3000);
+  }
 
-    ["toggleDTX", "toggleFEC", "toggleSimulcast", "toggleHWAccel"].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.onclick = () => {
-          el.classList.toggle("on");
-          el.textContent = el.classList.contains('on') ? 'Açık' : 'Kapalı';
-          this.updateCodecSettings();
-        };
-        el.textContent = el.classList.contains('on') ? 'Açık' : 'Kapalı';
+  async acceptCall(callId) {
+    try {
+      const res = await this.apiCall('/api/accept-call', {
+        method: 'POST',
+        body: JSON.stringify({ callId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        console.log('Call accepted:', callId);
       }
-    });
-
-    const qualityProfile = document.getElementById('qualityProfile');
-    if (qualityProfile) {
-      qualityProfile.onchange = () => { this.saveSettings && this.saveSettings(); };
+    } catch (err) {
+      console.error('Accept call error:', err);
     }
   }
 
-
-
-
-// Settings persistence helpers\n  loadSettings() {
+  async closeCall(callId) {
     try {
-      const raw = localStorage.getItem("admin-settings");
-      if (!raw) return;
-      const s = JSON.parse(raw);
-      const setToggle = (id, on) => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.classList.toggle('on', !!on);
-          el.textContent = el.classList.contains('on') ? 'Açık' : 'Kapalı';
-        }
-      };
-      const setRange = (id, val, labelId) => {
-        const el = document.getElementById(id);
-        if (el && typeof val !== 'undefined') {
-          el.value = String(val);
-          if (labelId) {
-            const lbl = document.getElementById(labelId);
-            if (lbl) lbl.textContent = (id === 'codecBitrate' ? val + 'kb/s' : val + '%');
-          }
-        }
-      };
-      const setSelect = (id, val) => {
-        const el = document.getElementById(id);
-        if (el && typeof val !== 'undefined') el.value = val;
-      };
-      setRange('micVolume', s.micVolume, 'micVolumeVal');
-      setRange('speakerVolume', s.speakerVolume, 'speakerVolumeVal');
-      setToggle('toggleNoiseSuppression', s.noiseSuppression);
-      setToggle('toggleEchoCancellation', s.echoCancellation);
-      setToggle('toggleAutoGain', s.autoGainControl);
-      setSelect('micDevice', s.micDevice);
-      setSelect('speakerDevice', s.speakerDevice);
-      setSelect('qualityProfile', s.qualityProfile || 'auto');
-      setRange('codecBitrate', s.codecBitrate || 64, 'codecBitrateVal');
-      setToggle('toggleDTX', s.dtx);
-      setToggle('toggleFEC', s.fec);
-      setToggle('toggleSimulcast', s.simulcast);
-      setToggle('toggleHWAccel', s.hwAccel);
-      this.updateAudioConstraints();
-      this.updateCodecSettings();
-    } catch (e) { console.warn('Failed to load admin settings:', e); }
+      const res = await this.apiCall('/api/close-call', {
+        method: 'POST',
+        body: JSON.stringify({ callId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        console.log('Call closed:', callId);
+      }
+    } catch (err) {
+      console.error('Close call error:', err);
+    }
   }
-  saveSettings() {
-    try {
-      const getOn = (id) => !!(document.getElementById(id)?.classList.contains('on'));
-      const getVal = (id, defv=null) => { const el = document.getElementById(id); return el ? el.value : defv; };
-      const s = {
-        micVolume: parseInt(getVal('micVolume', 100)) || 100,
-        speakerVolume: parseInt(getVal('speakerVolume', 75)) || 75,
-        noiseSuppression: getOn('toggleNoiseSuppression'),
-        echoCancellation: getOn('toggleEchoCancellation'),
-        autoGainControl: getOn('toggleAutoGain'),
-        micDevice: getVal('micDevice'),
-        speakerDevice: getVal('speakerDevice'),
-        qualityProfile: getVal('qualityProfile', 'auto'),
-        codecBitrate: parseInt(getVal('codecBitrate', 64)) || 64,
-        dtx: getOn('toggleDTX'),
-        fec: getOn('toggleFEC'),
-        simulcast: getOn('toggleSimulcast'),
-        hwAccel: getOn('toggleHWAccel')
-      };
-      localStorage.setItem('admin-settings', JSON.stringify(s));
-    } catch (e) { console.warn('Failed to save admin settings:', e); }
+
+  refreshData() {
+    this.loadRealData();
   }
+}
+
+// Initialize
+window.addEventListener('DOMContentLoaded', () => {
+  window.adminPanel = new AdminPanel();
+});

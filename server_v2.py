@@ -121,14 +121,16 @@ if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
 else:
     TELEGRAM_ENABLED = True
 
-def check_rate_limit(client_ip):
-    """Rate limiting kontrolü - OTPManager kullanarak"""
+def check_rate_limit(client_ip, user_agent=''):
+    """Rate limiting kontrolü - IP + User-Agent fingerprint"""
     if not RATE_LIMIT_ENABLED:
         return True
     
-    # OTPManager'daki rate limiting'i kullan
-    if not OTPManager.check_rate_limit(client_ip):
-        logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+    # IP + User-Agent kombinasyonu ile fingerprint oluştur
+    fingerprint = hashlib.sha256(f"{client_ip}:{user_agent}".encode()).hexdigest()[:16]
+    
+    if not OTPManager.check_rate_limit(fingerprint):
+        logger.warning(f"Rate limit exceeded for fingerprint: {fingerprint}")
         record_rate_limit_metrics(client_ip)
         raise RateLimitError()
     
@@ -174,11 +176,13 @@ def sanitize_input(text):
     
     return text
 
-# Storage
-active_calls: Dict[str, Dict[str, Any]] = {}
-call_logs: List[Dict[str, Any]] = []
+# Storage - Single source of truth: Database
 admin_sessions: Dict[str, Dict[str, Any]] = {}
 data_lock: threading.Lock = threading.Lock()
+
+# Database instance
+from database import DatabaseManager
+db_manager = DatabaseManager(DB_PATH)
 
 def generate_csrf_token():
     """CSRF token üret"""
@@ -190,16 +194,20 @@ def validate_csrf_token(token, session_token):
         return False
     return token == session_token
 
-def create_secure_session(call_id, ip_address):
-    """Güvenli session oluştur"""
+def create_secure_session(call_id, ip_address, user_agent):
+    """Güvenli session oluştur - CSRF + fingerprint"""
     csrf_token = generate_csrf_token()
+    fingerprint = hashlib.sha256(f"{ip_address}:{user_agent}:{call_id}".encode()).hexdigest()
+    
     session_data = {
         'authenticated': True,
         'timestamp': datetime.now(),
         'expires': datetime.now() + timedelta(hours=SESSION_TIMEOUT_HOURS),
         'ip_address': ip_address,
         'csrf_token': csrf_token,
-        'user_agent': None  # Will be set by handler
+        'user_agent': user_agent,
+        'fingerprint': fingerprint,
+        'last_activity': datetime.now()
     }
     return session_data, csrf_token
 
@@ -261,26 +269,42 @@ def create_call_log_entry(call_data: dict, status: str, duration: int = None) ->
     }
 
 def remove_call_from_active(call_id: str, reason: str = 'unknown') -> bool:
-    """Remove call from active calls and log the event"""
-    if call_id not in active_calls:
+    """Remove call and save to database"""
+    try:
+        # Get call from database
+        with db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM calls WHERE call_id = ?', (call_id,))
+            call_data = cursor.fetchone()
+            
+            if not call_data:
+                return False
+            
+            # Calculate duration
+            duration = 0
+            if call_data['status'] == 'connected':
+                start_time = datetime.fromisoformat(call_data['start_time'])
+                duration = int((datetime.now() - start_time).total_seconds())
+            
+            # Save to logs
+            db_manager.save_call_log(
+                call_data['customer_name'],
+                call_data['start_time'],
+                duration,
+                reason
+            )
+            
+            # Delete from active calls
+            db_manager.delete_call(call_id)
+            
+            # Record metrics
+            record_call_metrics(f'call_{reason}', call_id, call_data['customer_name'], duration)
+            log_call_event(call_id, f'call_{reason}', call_data['customer_name'])
+            
+            return True
+    except Exception as e:
+        logger.error(f"Error removing call {call_id}: {e}")
         return False
-    
-    call_data = active_calls[call_id]
-    
-    # Create log entry
-    duration = None
-    if call_data.get('status') == 'connected':
-        duration = int((datetime.now() - call_data['timestamp']).total_seconds())
-        call_logs.append(create_call_log_entry(call_data, reason, duration))
-    
-    # Record metrics
-    record_call_metrics(f'call_{reason}', call_id, call_data['customer_name'], duration)
-    
-    # Remove from active calls
-    del active_calls[call_id]
-    log_call_event(call_id, f'call_{reason}', call_data['customer_name'])
-    
-    return True
 
 def get_system_metrics():
     """Sistem metriklerini al"""
@@ -766,7 +790,8 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             # Rate limiting kontrolü
             client_ip = self.client_address[0]
-            check_rate_limit(client_ip)
+            user_agent = self.headers.get('User-Agent', '')
+            check_rate_limit(client_ip, user_agent)
             
             # Input validation
             validate_input(data, max_length={'customer_name': 50, 'otp': 6})
@@ -819,8 +844,7 @@ class Handler(SimpleHTTPRequestHandler):
             if success:
                 client_ip = self.client_address[0]
                 user_agent = self.headers.get('User-Agent', '')
-                session_data, csrf_token = create_secure_session(call_id, client_ip)
-                session_data['user_agent'] = user_agent
+                session_data, csrf_token = create_secure_session(call_id, client_ip, user_agent)
                 
                 with data_lock:
                     admin_sessions[call_id] = session_data
@@ -836,15 +860,8 @@ class Handler(SimpleHTTPRequestHandler):
             call_id = secrets.token_urlsafe(16)
             customer_name = data.get('customer_name', 'Misafir')
             
-            # Create call record
-            with data_lock:
-                active_calls[call_id] = {
-                    'customer_name': customer_name,
-                    'status': 'waiting',
-                    'start_time': datetime.now().isoformat(),
-                    'admin_connected': False,
-                    'last_heartbeat': datetime.now()
-                }
+            # Save to database
+            db_manager.save_call(call_id, customer_name, status='waiting')
             
             # Send Telegram notification
             current_time = datetime.now().strftime('%H:%M:%S')
@@ -925,7 +942,6 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json({'success': True, 'calls': calls_list})
         
         elif path == '/api/accept-call':
-            # Admin authentication check
             if not self.check_admin_auth():
                 self.send_json({'success': False, 'error': 'Unauthorized'})
                 return
@@ -935,14 +951,12 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json({'success': False, 'error': 'Call ID required'})
                 return
             
-            with data_lock:
-                if call_id in active_calls:
-                    active_calls[call_id]['status'] = 'connected'
-                    active_calls[call_id]['admin_connected'] = True
-                    active_calls[call_id]['admin_connect_time'] = datetime.now().isoformat()
-                    self.send_json({'success': True, 'message': 'Call accepted'})
-                else:
-                    self.send_json({'success': False, 'error': 'Call not found'})
+            try:
+                db_manager.update_call_status(call_id, 'connected')
+                self.send_json({'success': True, 'message': 'Call accepted'})
+            except Exception as e:
+                logger.error(f"Accept call error: {e}")
+                self.send_json({'success': False, 'error': 'Call not found'})
         
         elif path == '/api/end-call':
             call_id = data.get('callId', '')

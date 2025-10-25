@@ -1,0 +1,178 @@
+/* Mobile Optimizer Styles */
+.mobile-optimizer-indicator {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 200px;
+}
+
+.optimizer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.optimizer-title {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.device-info {
+  font-size: 10px;
+  opacity: 0.7;
+  margin-bottom: 8px;
+}
+
+.optimization-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.status-label {
+  opacity: 0.8;
+}
+
+.status-value {
+  font-weight: 600;
+}
+
+.status-value.battery-critical {
+  color: #F44336;
+}
+
+.status-value.battery-low {
+  color: #FF9800;
+}
+
+.status-value.battery-medium {
+  color: #FFC107;
+}
+
+.status-value.battery-high {
+  color: #4CAF50;
+}
+
+.status-value.thermal-critical {
+  color: #F44336;
+}
+
+.status-value.thermal-normal {
+  color: #4CAF50;
+}
+
+.status-value.low-power {
+  color: #FF9800;
+}
+
+.status-value.normal-power {
+  color: #4CAF50;
+}
+
+/* Battery indicator */
+.battery-indicator {
+  display: inline-block;
+  width: 20px;
+  height: 10px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  position: relative;
+  margin-left: 5px;
+}
+
+.battery-indicator::after {
+  content: '';
+  position: absolute;
+  right: -3px;
+  top: 2px;
+  width: 2px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 0 1px 1px 0;
+}
+
+.battery-level {
+  height: 100%;
+  background: currentColor;
+  border-radius: 1px;
+  transition: width 0.3s ease;
+}
+
+.battery-level.critical {
+  background: #F44336;
+}
+
+.battery-level.low {
+  background: #FF9800;
+}
+
+.battery-level.medium {
+  background: #FFC107;
+}
+
+.battery-level.high {
+  background: #4CAF50;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .mobile-optimizer-indicator {
+    bottom: 10px;
+    right: 10px;
+    padding: 10px;
+    min-width: 150px;
+  }
+  
+  .optimizer-title {
+    font-size: 11px;
+  }
+  
+  .status-item {
+    font-size: 10px;
+  }
+}
+
+/* Dark theme support */
+[data-theme="dark"] .mobile-optimizer-indicator {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Animation for status changes */
+.status-value {
+  animation: statusChange 0.5s ease-in-out;
+}
+
+@keyframes statusChange {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Pulse animation for critical states */
+.status-value.battery-critical,
+.status-value.thermal-critical {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}

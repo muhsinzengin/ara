@@ -307,17 +307,7 @@
   <script src="/static/webrtc-config.js"></script>
   <script src="/static/common-utils.js"></script>
   <script>
-    // Override $ function for this page
-    const $ = (id) => {
-      // Remove # if present
-      const cleanId = id.startsWith('#') ? id.substring(1) : id;
-      const element = document.getElementById(cleanId);
-      if (!element) {
-        console.error(`Element with id '${cleanId}' not found`);
-        return null;
-      }
-      return element;
-    };
+    // Use CommonUtils.$ function
 
     // Customer Call
     class CustomerCall {
@@ -331,8 +321,8 @@
       }
 
       init() {
-        const nameInput = $('#nameInput');
-        const startBtn = $('#startBtn');
+        const nameInput = CommonUtils.$('#nameInput');
+        const startBtn = CommonUtils.$('#startBtn');
         
         if (!nameInput || !startBtn) {
           console.error('Required elements not found');
@@ -363,12 +353,12 @@
         startBtn.onclick = () => this.startCall();
         
         // Other controls
-        const micBtn = $('#micBtn');
-        const videoBtn = $('#videoBtn');
-        const speakerBtn = $('#speakerBtn');
-        const proximityBtn = $('#proximityBtn');
-        const fullscreenBtn = $('#fullscreenBtn');
-        const endBtn = $('#endBtn');
+        const micBtn = CommonUtils.$('#micBtn');
+        const videoBtn = CommonUtils.$('#videoBtn');
+        const speakerBtn = CommonUtils.$('#speakerBtn');
+        const proximityBtn = CommonUtils.$('#proximityBtn');
+        const fullscreenBtn = CommonUtils.$('#fullscreenBtn');
+        const endBtn = CommonUtils.$('#endBtn');
         
         if (micBtn) micBtn.onclick = () => this.toggleMic();
         if (videoBtn) videoBtn.onclick = () => this.toggleVideo();
@@ -381,7 +371,7 @@
       }
 
       async startCall() {
-        const nameInput = $('#nameInput');
+        const nameInput = CommonUtils.$('#nameInput');
         if (!nameInput) {
           console.error('Name input not found');
           return;
@@ -473,7 +463,7 @@
             video: this.localStream.getVideoTracks().length
           });
 
-          const localVideo = $('#localVideo');
+          const localVideo = CommonUtils.$('#localVideo');
           if (localVideo) {
             localVideo.srcObject = this.localStream;
           }
@@ -493,8 +483,8 @@
             console.log('[INDEX WebRTC] Track received:', event.track.kind);
             const stream = event.streams[0];
             if (event.track.kind === 'video') {
-              $('#remoteVideo').srcObject = stream;
-              $('#statusText').textContent = 'Bağlandı';
+              CommonUtils.$('#remoteVideo').srcObject = stream;
+              CommonUtils.$('#statusText').textContent = 'Bağlandı';
               console.log('[INDEX WebRTC] Remote video set');
             } else {
               const audio = $('#remoteAudio');
@@ -1097,6 +1087,53 @@
     // Override WebRTC constraints for mobile
     window.mobileWebRTCOptions = mobileWebRTCOptions;
 
+    // Initialize Enhanced Quality Systems for Index
+    async function initializeEnhancedSystems() {
+      try {
+        // Initialize audio processing
+        if (window.AudioProcessor) {
+          window.audioProcessor = new AudioProcessor();
+          await window.audioProcessor.initialize();
+        }
+        
+        if (window.AudioLevelManager) {
+          window.audioLevelManager = new AudioLevelManager();
+          await window.audioLevelManager.initialize();
+        }
+
+        // Initialize video quality management
+        if (window.VideoQualityManager) {
+          window.videoQualityManager = new VideoQualityManager();
+          await window.videoQualityManager.initialize();
+        }
+
+        // Initialize network monitoring
+        if (window.NetworkMonitor) {
+          window.networkMonitor = new NetworkMonitor();
+          await window.networkMonitor.initialize();
+        }
+
+        // Initialize mobile optimization
+        if (window.MobileOptimizer) {
+          window.mobileOptimizer = new MobileOptimizer();
+          await window.mobileOptimizer.initialize();
+        }
+
+        // Initialize battery optimization
+        if (window.BatteryOptimizer) {
+          window.batteryOptimizer = new BatteryOptimizer();
+          await window.batteryOptimizer.initialize();
+        }
+
+        console.log('[Index] Enhanced quality systems initialized');
+      } catch (error) {
+        console.error('[Index] Failed to initialize enhanced systems:', error);
+      }
+    }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', initializeEnhancedSystems);
+
     // Touch gestures for mobile
     let touchStartX = 0;
     let touchStartY = 0;
@@ -1187,7 +1224,18 @@
       clearTimeout(longPressTimer);
     });
   </script>
-</body>
+  <!-- Enhanced Quality Systems Scripts -->
+  <script src="/static/webrtc-config.js"></script>
+  <script src="/static/audio-processor.js"></script>
+  <script src="/static/video-quality-manager.js"></script>
+  <script src="/static/network-monitor.js"></script>
+  <script src="/static/mobile-optimizer.js"></script>
+  
+  <!-- Enhanced Quality Systems Styles -->
+  <link rel="stylesheet" href="/static/audio-level-styles.css">
+  <link rel="stylesheet" href="/static/video-quality-styles.css">
+  <link rel="stylesheet" href="/static/mobile-optimizer-styles.css">
+  </body>
 </html>
 
 

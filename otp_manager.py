@@ -173,25 +173,31 @@ class OTPManager:
 
     @staticmethod
     def check_rate_limit(identifier: str) -> bool:
-        """Rate limiting kontrolü"""
+        """Rate limiting kontrolü - IP + fingerprint"""
         current_time = time.time()
 
         with data_lock:
             if identifier not in rate_limit_storage:
-                rate_limit_storage[identifier] = []
+                rate_limit_storage[identifier] = {'requests': [], 'blocked_until': 0}
+
+            # Bloke kontrolü
+            if current_time < rate_limit_storage[identifier]['blocked_until']:
+                return False
 
             # Eski istekleri temizle
-            rate_limit_storage[identifier] = [
-                req_time for req_time in rate_limit_storage[identifier]
+            rate_limit_storage[identifier]['requests'] = [
+                req_time for req_time in rate_limit_storage[identifier]['requests']
                 if current_time - req_time < RATE_LIMIT_WINDOW
             ]
 
             # Limit kontrolü
-            if len(rate_limit_storage[identifier]) >= RATE_LIMIT_REQUESTS:
+            if len(rate_limit_storage[identifier]['requests']) >= RATE_LIMIT_REQUESTS:
+                # 1 saat bloke et
+                rate_limit_storage[identifier]['blocked_until'] = current_time + 3600
                 return False
 
             # Yeni isteği ekle
-            rate_limit_storage[identifier].append(current_time)
+            rate_limit_storage[identifier]['requests'].append(current_time)
             return True
 
     @staticmethod

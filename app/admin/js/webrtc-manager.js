@@ -1,132 +1,273 @@
-// WebRTC Manager - Güvenli ve optimize edilmiş
+// WebRTC Manager - Enhanced with Quality Systems
 class WebRTCManager {
   constructor() {
     this.currentCallId = null;
     this.pc = null;
     this.localStream = null;
-    this.audioConstraints = {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
-    };
-    this.codecSettings = {
-      bitrate: 64000,
-      dtx: true,
-      fec: true
-    };
-    this.speakerVolume = 0.75;
     this.intervals = [];
-    this.logger = window.Logger;
+    this.processedCandidates = new Set();
+    this._polling = false;
+    
+    // Enhanced systems
+    this.audioProcessor = null;
+    this.audioLevelManager = null;
+    this.videoQualityManager = null;
+    this.networkMonitor = null;
+    this.mobileOptimizer = null;
+    this.batteryOptimizer = null;
+    this.smartBitrateController = null;
+    
+    // Quality tracking
+    this.qualityLevel = 3; // 1-5 scale
+    this.currentBitrate = 1000000;
+    this.isInitialized = false;
   }
 
   async initConnection(callId) {
     this.currentCallId = callId;
 
     try {
-      console.log('[ADMIN WebRTC] Requesting media...');
+      LoadingManager.show('Gelişmiş ses-görüntü sistemi başlatılıyor...');
       
-      // Detect network quality
-      const quality = await this.detectNetworkQuality();
-      console.log('[ADMIN WebRTC] Network quality:', quality);
+      // Initialize enhanced systems
+      await this.initializeEnhancedSystems();
       
-      // Get optimal constraints
-      const constraints = this.getOptimalConstraints(quality);
-      console.log('[ADMIN WebRTC] Using constraints:', constraints);
+      LoadingManager.update('Kamera ve mikrofon erişimi isteniyor...');
       
-      this.localStream = await navigator.mediaDevices.getUserMedia(constraints).catch(err => {
-        console.error('[ADMIN WebRTC] getUserMedia error:', err);
-        this.hideLoading();
-        throw err;
-      });
+      // Get optimal constraints based on device and network
+      const constraints = await this.getOptimalConstraints();
+      this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
 
-      console.log('[ADMIN WebRTC] Media acquired:', {
-        audio: this.localStream.getAudioTracks().length,
-        video: this.localStream.getVideoTracks().length
-      });
-
-      // Local video'yu göster
-      const localVideo = document.getElementById('fullLocalVideo');
-      if (localVideo) {
-        localVideo.srcObject = this.localStream;
+      LoadingManager.update('Ses işleme sistemi aktifleştiriliyor...');
+      
+      // Initialize audio processing
+      if (this.audioProcessor) {
+        await this.audioProcessor.processStream(this.localStream);
+      }
+      
+      if (this.audioLevelManager) {
+        await this.audioLevelManager.processStream(this.localStream);
       }
 
-      // Create peer connection with optimal config
-      const pcConfig = await WebRTCHelpers.getPeerConfig();
-      
+      LoadingManager.update('Bağlantı kuruluyor...');
+
+      const localVideo = document.getElementById('fullLocalVideo');
+      if (localVideo) localVideo.srcObject = this.localStream;
+
+      // Use enhanced ICE servers
+      const pcConfig = { 
+        iceServers: this.getEnhancedIceServers(),
+        iceCandidatePoolSize: 10,
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require'
+      };
       this.pc = new RTCPeerConnection(pcConfig);
 
       this.localStream.getTracks().forEach(track => {
-        console.log('[ADMIN WebRTC] Adding track:', track.kind);
         this.pc.addTrack(track, this.localStream);
       });
 
       this.pc.ontrack = (event) => {
-        console.log('[ADMIN WebRTC] Track received:', event.track.kind);
         const stream = event.streams[0];
-
         if (event.track.kind === 'video') {
           const remoteVideo = document.getElementById('fullRemoteVideo');
-          if (remoteVideo) {
-            remoteVideo.srcObject = stream;
-            console.log('[ADMIN WebRTC] Remote video set');
-          }
+          if (remoteVideo) remoteVideo.srcObject = stream;
         } else {
           const remoteAudio = document.getElementById('fullRemoteAudio');
           if (remoteAudio) {
             remoteAudio.srcObject = stream;
-            remoteAudio.volume = this.speakerVolume;
-            remoteAudio.play().catch(e => console.log('[ADMIN WebRTC] Audio autoplay:', e));
-            console.log('[ADMIN WebRTC] Remote audio set');
+            remoteAudio.play().catch(e => console.log('Audio autoplay:', e));
           }
         }
       };
 
       this.pc.onicecandidate = async (event) => {
         if (event.candidate) {
-          console.log('[ADMIN WebRTC] ICE candidate:', event.candidate.type);
           await this.sendSignal('ice', { candidate: event.candidate });
-        } else {
-          console.log('[ADMIN WebRTC] ICE gathering complete');
+        }
+      };
+
+      this.pc.oniceconnectionstatechange = () => {
+        console.log('[WebRTC] ICE state:', this.pc.iceConnectionState);
+        if (this.pc.iceConnectionState === 'failed') {
+          this.pc.restartIce();
         }
       };
 
       this.pc.onconnectionstatechange = () => {
-        console.log('[ADMIN WebRTC] Connection state:', this.pc.connectionState);
+        console.log('[WebRTC] Connection state:', this.pc.connectionState);
         if (this.pc.connectionState === 'connected') {
-          console.log('[ADMIN WebRTC] ✅ Connection established!');
-          this.startStatsMonitoring();
-          this.startQualityMonitoring();
+          LoadingManager.hide();
+          ErrorHandler.show('Gelişmiş bağlantı kuruldu', 'success');
+          this.startEnhancedMonitoring();
+        } else if (this.pc.connectionState === 'failed') {
+          ErrorHandler.show('Bağlantı başarısız. Yeniden deneniyor...', 'warning');
+          this.reconnect();
+        } else if (this.pc.connectionState === 'disconnected') {
+          ErrorHandler.show('Bağlantı kesildi', 'warning');
         }
       };
 
-      // Poll for signals
+      this.optimizeAudioTracks();
       this.startSignalPolling();
-
-      console.log('[ADMIN WebRTC] Connection initialized for call:', callId);
+      this.isInitialized = true;
+      
     } catch (err) {
-      console.error('[ADMIN WebRTC] Init error:', err);
-      this.hideLoading();
-      throw err;
+      LoadingManager.hide();
+      ErrorHandler.handle(err, 'Enhanced WebRTC Init');
     }
   }
 
-  showLoading(text) {
-    const overlay = document.getElementById('fullLoadingOverlay');
-    if (overlay) {
-      overlay.classList.remove('hidden');
+  async initializeEnhancedSystems() {
+    try {
+      // Initialize audio processing
+      if (window.AudioProcessor) {
+        this.audioProcessor = new AudioProcessor();
+        await this.audioProcessor.initialize();
+      }
+      
+      if (window.AudioLevelManager) {
+        this.audioLevelManager = new AudioLevelManager();
+        await this.audioLevelManager.initialize();
+      }
+
+      // Initialize video quality management
+      if (window.VideoQualityManager) {
+        this.videoQualityManager = new VideoQualityManager();
+        await this.videoQualityManager.initialize();
+      }
+
+      // Initialize network monitoring
+      if (window.NetworkMonitor) {
+        this.networkMonitor = new NetworkMonitor();
+        await this.networkMonitor.initialize();
+      }
+
+      // Initialize mobile optimization
+      if (window.MobileOptimizer) {
+        this.mobileOptimizer = new MobileOptimizer();
+        await this.mobileOptimizer.initialize();
+      }
+
+      // Initialize battery optimization
+      if (window.BatteryOptimizer) {
+        this.batteryOptimizer = new BatteryOptimizer();
+        await this.batteryOptimizer.initialize();
+      }
+
+      // Initialize smart bitrate control
+      if (window.SmartBitrateController) {
+        this.smartBitrateController = new SmartBitrateController();
+      }
+
+      console.log('[WebRTC] Enhanced systems initialized');
+    } catch (error) {
+      console.error('[WebRTC] Failed to initialize enhanced systems:', error);
     }
   }
 
-  hideLoading() {
-    const overlay = document.getElementById('fullLoadingOverlay');
-    if (overlay) {
-      overlay.classList.add('hidden');
+  async getOptimalConstraints() {
+    let constraints = {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 48000,
+        channelCount: 1,
+        latency: 0.01,
+        googEchoCancellation: true,
+        googAutoGainControl: true,
+        googNoiseSuppression: true,
+        googHighpassFilter: true,
+        googTypingNoiseDetection: true,
+        googAudioMirroring: false
+      },
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 }
+      }
+    };
+
+    // Apply mobile optimizations
+    if (this.mobileOptimizer) {
+      const mobileConstraints = this.mobileOptimizer.getOptimalConstraints();
+      constraints = { ...constraints, ...mobileConstraints };
     }
+
+    // Apply network-based optimizations
+    if (this.networkMonitor) {
+      const networkStats = await this.networkMonitor.getDetailedStats();
+      if (networkStats.bandwidth < 1000000) {
+        constraints.video.width.ideal = 854;
+        constraints.video.height.ideal = 480;
+        constraints.video.frameRate.ideal = 24;
+      }
+    }
+
+    return constraints;
+  }
+
+  getEnhancedIceServers() {
+    // Use WebRTCConfig if available, otherwise fallback
+    if (typeof WebRTCConfig !== 'undefined') {
+      return WebRTCConfig.iceServers;
+    }
+    
+    return [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+    ];
+  }
+
+  optimizeAudioTracks() {
+    if (!this.localStream) return;
+    
+    const audioTrack = this.localStream.getAudioTracks()[0];
+    if (audioTrack) {
+      const sender = this.pc.getSenders().find(s => s.track?.kind === 'audio');
+      if (sender) {
+        const params = sender.getParameters();
+        if (!params.encodings) params.encodings = [{}];
+        
+        // Enhanced audio settings
+        params.encodings[0].maxBitrate = 128000;
+        params.encodings[0].priority = 'high';
+        params.encodings[0].networkPriority = 'high';
+        params.encodings[0].maxFramerate = 30;
+        
+        sender.setParameters(params).catch(e => console.log('Audio optimization:', e));
+      }
+    }
+  }
+
+  async startEnhancedMonitoring() {
+    // Start network monitoring
+    if (this.networkMonitor) {
+      await this.networkMonitor.startMonitoring(this.pc);
+    }
+
+    // Start video quality management
+    if (this.videoQualityManager) {
+      // Video quality manager will handle its own monitoring
+    }
+
+    // Start stats monitoring
+    this.startStatsMonitoring();
   }
 
   startSignalPolling() {
-    const pollInterval = setInterval(async () => {
-      if (!this.currentCallId) return;
+    if (this._polling) return;
+    this._polling = true;
+    this.pollInterval = 2000;
+    this.maxPollInterval = 5000;
+    this.errorCount = 0;
+
+    const poll = async () => {
+      if (!this.currentCallId || !this.pc) return;
 
       try {
         const res = await fetch('/api/poll-signal', {
@@ -137,79 +278,81 @@ class WebRTCManager {
         const data = await res.json();
 
         if (data.success) {
-          // Answer varsa işle
+          this.errorCount = 0;
+          this.pollInterval = Math.max(2000, this.pollInterval - 500);
+
+          if (data.offer && !this.pc.currentLocalDescription) {
+            await this.pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await this.pc.createAnswer();
+            
+            // Apply SDP optimizations
+            let sdp = answer.sdp;
+            if (typeof WebRTCHelpers !== 'undefined') {
+              if (WebRTCHelpers.applyOpusSettings) {
+                sdp = WebRTCHelpers.applyOpusSettings(sdp, {
+                  maxaveragebitrate: 128000,
+                  stereo: 1,
+                  useinbandfec: 1,
+                  usedtx: 1,
+                  maxplaybackrate: 48000,
+                  complexity: 10,
+                  packetloss: 0,
+                  fec: 1,
+                  cbr: 0,
+                  application: 'voip'
+                });
+              }
+              
+              if (WebRTCHelpers.preferCodec) {
+                sdp = WebRTCHelpers.preferCodec(sdp, 'VP9', 'video');
+              }
+            }
+            
+            await this.pc.setLocalDescription({type: 'answer', sdp});
+            await this.sendSignal('answer', { answer: {type: 'answer', sdp} });
+          }
+
           if (data.answer && !this.pc.currentRemoteDescription) {
-            console.log('[ADMIN WebRTC] Received answer from INDEX');
             await this.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
           }
 
-          // ICE adayları varsa işle
           if (data.ice_candidates && data.ice_candidates.length > 0) {
-            console.log('[ADMIN WebRTC] Received', data.ice_candidates.length, 'ICE candidates from INDEX');
             for (const candidate of data.ice_candidates) {
-              if (candidate) {
+              const candidateKey = JSON.stringify(candidate);
+              if (!this.processedCandidates.has(candidateKey)) {
                 await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+                this.processedCandidates.add(candidateKey);
               }
             }
           }
-
-          // Offer varsa answer gönder
-          if (data.offer && !this.pc.currentLocalDescription) {
-            console.log('[ADMIN WebRTC] Received offer from INDEX, creating answer...');
-            await this.pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-
-            const answer = await this.pc.createAnswer();
-            // SDP modifiers from UI
-            const getMods = () => {
-              const el = (id) => document.getElementById(id);
-              return {
-                profile: (el('qualityProfile') && el('qualityProfile').value) || 'auto',
-                simulcast: !!(el('toggleSimulcast') && el('toggleSimulcast').classList.contains('on')),
-                hwAccel: !!(el('toggleHWAccel') && el('toggleHWAccel').classList.contains('on'))
-              };
-            };
-            const mods = getMods();
-            let sdp = answer.sdp;
-            sdp = WebRTCHelpers.applyOpusSettings(sdp, {
-              maxaveragebitrate: 96000,
-              stereo: 0,
-              useinbandfec: 1,
-              usedtx: 1,
-              maxplaybackrate: 48000
-            });
-            if (mods.profile && mods.profile !== 'auto') {
-              sdp = WebRTCHelpers.applyBitrateConstraints(sdp, mods.profile);
-            }
-            sdp = WebRTCHelpers.preferCodec(sdp, 'VP9', 'video');
-            if (mods.simulcast) { sdp = WebRTCHelpers.applySimulcast(sdp); }
-            if (mods.hwAccel) { sdp = WebRTCHelpers.enableHardwareAcceleration(sdp); }
-            await this.pc.setLocalDescription({type: 'answer', sdp});
-
-            console.log('[ADMIN WebRTC] Sending optimized answer to INDEX');
-            await this.sendSignal('answer', { answer: {type: 'answer', sdp} });
-          }
         }
       } catch (err) {
-        console.error('[ADMIN WebRTC] Poll error:', err);
+        console.error('[WebRTC] Poll error:', err);
+        this.errorCount++;
+        this.pollInterval = Math.min(this.maxPollInterval, this.pollInterval + 1000);
+        
+        if (this.errorCount > 5) {
+          this.reconnect();
+        }
       }
-    }, 1000);
 
-    this.intervals.push(pollInterval);
+      if (this._polling) {
+        setTimeout(poll, this.pollInterval);
+      }
+    };
+
+    poll();
   }
 
-  async sendSignal(type, data) {
+  async sendSignal(type, payload) {
     try {
       await fetch('/api/signal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          callId: this.currentCallId,
-          type,
-          ...data
-        })
+        body: JSON.stringify({ type, callId: this.currentCallId, ...payload })
       });
     } catch (err) {
-      console.error('Signal send error:', err);
+      console.error('[WebRTC] sendSignal error:', err);
     }
   }
 
@@ -219,7 +362,29 @@ class WebRTCManager {
 
       try {
         const stats = await this.pc.getStats();
-        this.updateStats(stats);
+        let packetsLost = 0, jitter = 0, audioLevel = 0, bitrate = 0;
+
+        stats.forEach(report => {
+          if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+            packetsLost = report.packetsLost || 0;
+            jitter = report.jitter || 0;
+            audioLevel = report.audioLevel || 0;
+          }
+          if (report.type === 'outbound-rtp' && report.kind === 'audio') {
+            bitrate = report.bytesSent || 0;
+          }
+        });
+
+        // Enhanced quality adjustment
+        await this.adjustQualityBasedOnStats(packetsLost, jitter, bitrate);
+
+        const lossEl = document.getElementById('perfLoss');
+        const jitterEl = document.getElementById('perfJitter');
+        const bitrateEl = document.getElementById('perfBitrate');
+
+        if (lossEl) lossEl.textContent = packetsLost;
+        if (jitterEl) jitterEl.textContent = Math.round(jitter * 1000) + 'ms';
+        if (bitrateEl) bitrateEl.textContent = Math.round(bitrate / 1000) + 'kb/s';
       } catch (err) {
         console.error('Stats error:', err);
       }
@@ -228,119 +393,97 @@ class WebRTCManager {
     this.intervals.push(statsInterval);
   }
 
-  updateStats(stats) {
-    let audioStats = { packetsLost: 0, jitter: 0, roundTripTime: 0 };
-
-    stats.forEach(report => {
-      if (report.type === 'inbound-rtp' && report.kind === 'audio') {
-        audioStats.packetsLost = report.packetsLost || 0;
-        audioStats.jitter = report.jitter || 0;
-        audioStats.roundTripTime = report.roundTripTime || 0;
+  async adjustQualityBasedOnStats(packetsLost, jitter, bitrate) {
+    // Use smart bitrate controller if available
+    if (this.smartBitrateController && this.networkMonitor) {
+      const networkStats = await this.networkMonitor.getDetailedStats();
+      const newBitrate = await this.smartBitrateController.adjustBitrate(networkStats);
+      
+      if (newBitrate !== this.currentBitrate) {
+        this.currentBitrate = newBitrate;
+        await this.applyBitrateToVideo(newBitrate);
       }
-    });
-
-    // UI güncelle
-    const lossEl = document.getElementById('perfLoss');
-    const jitterEl = document.getElementById('perfJitter');
-
-    if (lossEl) {
-      const lossPercent = audioStats.packetsLost > 0 ? (audioStats.packetsLost / (audioStats.packetsLost + 1)) * 100 : 0;
-      lossEl.textContent = lossPercent.toFixed(1) + '%';
-      lossEl.parentElement.querySelector('.progress__bar').style.width = Math.min(lossPercent * 2, 100) + '%';
     }
 
-    if (jitterEl) {
-      jitterEl.textContent = (audioStats.jitter * 1000).toFixed(0) + 'ms';
-      jitterEl.parentElement.querySelector('.progress__bar').style.width = Math.min(audioStats.jitter * 20000, 100) + '%';
+    // Traditional quality adjustment
+    if (packetsLost > 10) {
+      this.degradeQuality();
+    } else if (packetsLost < 2 && this.qualityLevel < 3) {
+      this.improveQuality();
     }
   }
 
-  // Ses ayarları
-  updateAudioConstraints(constraints) {
-    this.audioConstraints = { ...this.audioConstraints, ...constraints };
-
-    if (this.localStream) {
-      const audioTrack = this.localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.applyConstraints({
-          advanced: [{
-            echoCancellation: this.audioConstraints.echoCancellation,
-            noiseSuppression: this.audioConstraints.noiseSuppression,
-            autoGainControl: this.audioConstraints.autoGainControl
-          }]
-        }).catch(err => console.error('Audio constraints error:', err));
+  async applyBitrateToVideo(bitrate) {
+    const sender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+    if (sender) {
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) {
+        params.encodings = [{}];
+      }
+      params.encodings[0].maxBitrate = bitrate;
+      
+      try {
+        await sender.setParameters(params);
+        console.log(`[WebRTC] Applied bitrate: ${bitrate}`);
+      } catch (error) {
+        console.error('[WebRTC] Failed to set bitrate:', error);
       }
     }
   }
 
-  setSpeakerVolume(volume) {
-    this.speakerVolume = volume;
-    const remoteAudio = document.getElementById('fullRemoteAudio');
-    if (remoteAudio) {
-      remoteAudio.volume = volume;
-    }
-  }
-
-  async changeAudioDevice(kind, deviceId) {
-    try {
-      const newConstraints = {
-        audio: { ...this.audioConstraints, deviceId: deviceId ? { exact: deviceId } : undefined },
-        video: false
+  applyBatteryOptimizations(settings) {
+    if (!this.pc || !this.localStream) return;
+    
+    const videoTrack = this.localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      const constraints = {
+        width: { ideal: 1280 * settings.resolution },
+        height: { ideal: 720 * settings.resolution },
+        frameRate: { ideal: 30 * settings.frameRate }
       };
-
-      const newStream = await navigator.mediaDevices.getUserMedia(newConstraints);
-
-      if (this.localStream) {
-        this.localStream.getTracks().forEach(track => track.stop());
-      }
-
-      this.localStream = newStream;
-
-      // Peer connection'ı güncelle
-      if (this.pc) {
-        const sender = this.pc.getSenders().find(s => s.track && s.track.kind === 'audio');
-        if (sender) {
-          await sender.replaceTrack(this.localStream.getAudioTracks()[0]);
-        }
-      }
-
-      console.log(`[ADMIN WebRTC] ${kind} device changed`);
-    } catch (err) {
-      console.error('Change audio device error:', err);
+      videoTrack.applyConstraints(constraints).catch(e => console.log('Battery optimization:', e));
     }
+    
+    // Apply bitrate optimization
+    this.currentBitrate *= settings.videoBitrate;
+    this.applyBitrateToVideo(this.currentBitrate);
   }
 
-  // Codec ayarları
-  updateCodecSettings(settings) {
-    this.codecSettings = { ...this.codecSettings, ...settings };
-
-    if (this.pc && this.pc.currentLocalDescription) {
-      // SDP'yi güncelle
-      let sdp = this.pc.currentLocalDescription.sdp;
-      const el = (id) => document.getElementById(id);
-      const mods = {
-        profile: (el('qualityProfile') && el('qualityProfile').value) || 'auto',
-        simulcast: !!(el('toggleSimulcast') && el('toggleSimulcast').classList.contains('on')),
-        hwAccel: !!(el('toggleHWAccel') && el('toggleHWAccel').classList.contains('on'))
+  degradeQuality() {
+    if (!this.pc || !this.localStream) return;
+    this.qualityLevel = Math.max(1, (this.qualityLevel || 3) - 1);
+    
+    const videoTrack = this.localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      const constraints = {
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        frameRate: { ideal: 15 }
       };
-      sdp = WebRTCHelpers.applyOpusSettings(sdp, {
-        maxaveragebitrate: this.codecSettings.bitrate,
-        useinbandfec: this.codecSettings.fec ? 1 : 0,
-        usedtx: this.codecSettings.dtx ? 1 : 0
-      });
-      if (mods.profile && mods.profile !== 'auto') {
-        sdp = WebRTCHelpers.applyBitrateConstraints(sdp, mods.profile);
-      }
-      if (mods.simulcast) { sdp = WebRTCHelpers.applySimulcast(sdp); }
-      if (mods.hwAccel) { sdp = WebRTCHelpers.enableHardwareAcceleration(sdp); }
-
-      this.pc.setLocalDescription({ type: 'offer', sdp }).catch(err => {
-        console.error('Codec settings error:', err);
-      });
+      videoTrack.applyConstraints(constraints).catch(e => console.log('Degrade:', e));
     }
   }
 
-  // Toggle fonksiyonları
+  improveQuality() {
+    if (!this.pc || !this.localStream) return;
+    this.qualityLevel = Math.min(3, (this.qualityLevel || 1) + 1);
+    
+    const videoTrack = this.localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      const constraints = {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30 }
+      };
+      videoTrack.applyConstraints(constraints).catch(e => console.log('Improve:', e));
+    }
+  }
+
+  hideLoading() {
+    const overlay = document.getElementById('fullLoadingOverlay');
+    if (overlay) overlay.classList.add('hidden');
+  }
+
   toggleMic() {
     if (!this.localStream) return false;
     const track = this.localStream.getAudioTracks()[0];
@@ -361,184 +504,64 @@ class WebRTCManager {
     return false;
   }
 
-  toggleSpeaker() {
-    const remoteAudio = document.getElementById('fullRemoteAudio');
-    if (remoteAudio) {
-      remoteAudio.muted = !remoteAudio.muted;
-      return !remoteAudio.muted;
+  async reconnect() {
+    console.log('[WebRTC] Attempting enhanced reconnect...');
+    this.cleanup();
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (this.currentCallId) {
+      await this.initConnection(this.currentCallId);
     }
-    return false;
   }
 
-  \n    if (window.WebRTCHelpers && typeof window.WebRTCHelpers.detectNetworkQuality === 'function') { return await window.WebRTCHelpers.detectNetworkQuality(); }\n
-    try {
-      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      if (connection) {
-        const effectiveType = connection.effectiveType;
-        const downlink = connection.downlink;
-        
-        if (effectiveType === '4g' || downlink > 5) return 'high';
-        if (effectiveType === '3g' || downlink > 1.5) return 'medium';
-        return 'low';
-      }
-    } catch (err) {
-      console.log('[ADMIN WebRTC] Network detection failed, using auto');
-    }
-    return 'auto';
-  }
-
-  getOptimalConstraints(quality) {
-    const profiles = {
-      low: {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000
-        },
-        video: {
-          width: {ideal: 640},
-          height: {ideal: 480},
-          frameRate: {ideal: 15}
-        }
-      },
-      medium: {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000
-        },
-        video: {
-          width: {ideal: 1280},
-          height: {ideal: 720},
-          frameRate: {ideal: 24}
-        }
-      },
-      high: {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000
-        },
-        video: {
-          width: {ideal: 1920},
-          height: {ideal: 1080},
-          frameRate: {ideal: 30}
-        }
-      },
-      auto: {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000
-        },
-        video: {
-          width: {ideal: 1280},
-          height: {ideal: 720},
-          frameRate: {ideal: 30}
-        }
-      }
-    };
-    
-    return profiles[quality] || profiles.auto;
-  }
-
-  startQualityMonitoring() {
-    if (this.qualityInterval) clearInterval(this.qualityInterval);
-    
-    this.qualityInterval = setInterval(async () => {
-      if (!this.pc) return;
-      
-      try {
-        const stats = await this.pc.getStats();
-        let packetsLost = 0;
-        let packetsReceived = 0;
-        let bytesReceived = 0;
-        
-        stats.forEach(report => {
-          if (report.type === 'inbound-rtp') {
-            packetsLost += report.packetsLost || 0;
-            packetsReceived += report.packetsReceived || 0;
-            bytesReceived += report.bytesReceived || 0;
-          }
-        });
-        
-        const lossRate = packetsReceived > 0 ? (packetsLost / packetsReceived) * 100 : 0;
-        
-        // Auto quality adjustment
-        if (lossRate > 5) {
-          console.log('[ADMIN WebRTC] High packet loss:', lossRate.toFixed(2) + '%');
-          this.adjustQuality('down');
-        } else if (lossRate < 1 && bytesReceived > 1000000) {
-          this.adjustQuality('up');
-        }
-      } catch (err) {
-        console.error('[ADMIN WebRTC] Quality monitoring error:', err);
-      }
-    }, 5000);
-    
-    this.intervals.push(this.qualityInterval);
-  }
-
-  adjustQuality(direction) {
-    if (!this.pc || !this.localStream) return;
-    
-    const videoTrack = this.localStream.getVideoTracks()[0];
-    if (!videoTrack) return;
-    
-    const sender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
-    if (!sender) return;
-    
-    const params = sender.getParameters();
-    if (!params.encodings || params.encodings.length === 0) {
-      params.encodings = [{}];
-    }
-    
-    const currentBitrate = params.encodings[0].maxBitrate || 2500000;
-    
-    if (direction === 'down') {
-      params.encodings[0].maxBitrate = Math.max(250000, currentBitrate * 0.7);
-      console.log('[ADMIN WebRTC] Reducing bitrate to:', params.encodings[0].maxBitrate);
-    } else if (direction === 'up') {
-      params.encodings[0].maxBitrate = Math.min(2500000, currentBitrate * 1.3);
-      console.log('[ADMIN WebRTC] Increasing bitrate to:', params.encodings[0].maxBitrate);
-    }
-    
-    sender.setParameters(params).catch(err => {
-      console.error('[ADMIN WebRTC] Failed to adjust quality:', err);
-    });
-  }
-
-  // Cleanup
   cleanup() {
-    console.log('[ADMIN WebRTC] Cleaning up...');
-
+    console.log('[WebRTC] Enhanced cleanup...');
+    this._polling = false;
     this.intervals.forEach(id => clearInterval(id));
     this.intervals = [];
+    this.processedCandidates.clear();
+
+    // Cleanup enhanced systems
+    if (this.audioProcessor) {
+      this.audioProcessor.destroy();
+    }
     
-    if (this.qualityInterval) {
-      clearInterval(this.qualityInterval);
-      this.qualityInterval = null;
+    if (this.audioLevelManager) {
+      this.audioLevelManager.destroy();
+    }
+    
+    if (this.videoQualityManager) {
+      this.videoQualityManager.destroy();
+    }
+    
+    if (this.networkMonitor) {
+      this.networkMonitor.destroy();
+    }
+    
+    if (this.mobileOptimizer) {
+      this.mobileOptimizer.destroy();
+    }
+    
+    if (this.batteryOptimizer) {
+      this.batteryOptimizer.destroy();
     }
 
     if (this.pc) {
+      this.pc.ontrack = null;
+      this.pc.onicecandidate = null;
+      this.pc.onconnectionstatechange = null;
       this.pc.close();
       this.pc = null;
     }
 
     if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
+      this.localStream.getTracks().forEach(track => {
+        track.stop();
+        track.enabled = false;
+      });
       this.localStream = null;
     }
 
     this.currentCallId = null;
-    console.log('[ADMIN WebRTC] Cleanup complete');
+    this.isInitialized = false;
   }
 }
-
-
-
-

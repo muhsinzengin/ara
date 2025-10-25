@@ -2,14 +2,44 @@
 const WebRTCConfig = {
   // ICE Servers (STUN + TURN for firewall bypass)
   iceServers: [
+    // Primary STUN servers
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
     { urls: 'stun:global.stun.twilio.com:3478' },
+    { urls: 'stun:stun.voiparound.com' },
+    { urls: 'stun:stun.voipbuster.com' },
+    { urls: 'stun:stun.voipstunt.com' },
+    { urls: 'stun:stun.counterpath.com' },
+    { urls: 'stun:stun.1und1.de' },
+    { urls: 'stun:stun.gmx.net' },
+    { urls: 'stun:stun.schlund.de' },
+    { urls: 'stun:stun.voiparound.com' },
+    { urls: 'stun:stun.voipbuster.com' },
+    { urls: 'stun:stun.voipstunt.com' },
+    { urls: 'stun:stun.counterpath.com' },
+    { urls: 'stun:stun.1und1.de' },
+    { urls: 'stun:stun.gmx.net' },
+    { urls: 'stun:stun.schlund.de' },
+    
     // Free TURN servers
     { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:80?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+    
+    // Additional TURN servers for better connectivity
+    { urls: 'turn:relay.metered.ca:80', username: 'your-username', credential: 'your-credential' },
+    { urls: 'turn:relay.metered.ca:443', username: 'your-username', credential: 'your-credential' },
+    { urls: 'turn:relay.metered.ca:443?transport=tcp', username: 'your-username', credential: 'your-credential' },
+    { urls: 'turn:relay.metered.ca:80?transport=tcp', username: 'your-username', credential: 'your-credential' },
+    
+    // Backup TURN servers
+    { urls: 'turn:freeturn.tel:3478', username: 'free', credential: 'free' },
+    { urls: 'turn:freeturn.tel:3478?transport=tcp', username: 'free', credential: 'free' },
+    { urls: 'turn:freeturn.tel:3478?transport=udp', username: 'free', credential: 'free' }
   ],
 
   // Quality Profiles

@@ -22,26 +22,50 @@ class DatabaseManager:
             self.database_url = db_path
         self.is_postgres = bool(self.database_url)
         self.db_path = db_path if not self.is_postgres else None
+        self._connection_pool = None
         self.init_database()
+        self.init_connection_pool()
     
+    def init_connection_pool(self):
+        """Initialize connection pool for Postgres"""
+        if self.is_postgres and psycopg2:
+            try:
+                from psycopg2 import pool
+                self._connection_pool = pool.SimpleConnectionPool(
+                    minconn=1,
+                    maxconn=10,
+                    dsn=self.database_url
+                )
+            except Exception as e:
+                print(f"Connection pool init failed: {e}")
+
     @contextmanager
     def get_connection(self):
-        """Context manager for database connections"""
+        """Context manager with connection pooling"""
         if self.is_postgres:
             if psycopg2 is None:
                 raise RuntimeError("psycopg2 is required for Postgres but not installed")
-            conn = psycopg2.connect(self.database_url, cursor_factory=RealDictCursor)
+            if self._connection_pool:
+                conn = self._connection_pool.getconn()
+            else:
+                conn = psycopg2.connect(self.database_url, cursor_factory=RealDictCursor)
         else:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, check_same_thread=False)
             conn.row_factory = sqlite3.Row
+            conn.execute('PRAGMA journal_mode=WAL')
+        
         try:
+            conn.autocommit = False
             yield conn
             conn.commit()
         except Exception as e:
             conn.rollback()
             raise e
         finally:
-            conn.close()
+            if self.is_postgres and self._connection_pool:
+                self._connection_pool.putconn(conn)
+            else:
+                conn.close()
     
     def init_database(self):
         """Initialize database tables"""

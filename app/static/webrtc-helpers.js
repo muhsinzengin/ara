@@ -44,7 +44,17 @@
     return { audio, video };
   }
 
-  window.WebRTCHelpers = { detectNetworkQuality, getOptimalConstraints };
+  window.WebRTCHelpers = { 
+    detectNetworkQuality, 
+    getOptimalConstraints,
+    applyOpusSettings,
+    preferCodec,
+    applyBitrateConstraints,
+    enableHardwareAcceleration,
+    applySimulcast,
+    getIceServers,
+    getPeerConfig
+  };
   // SDP helpers (wrap WebRTCConfig if available, else provide defaults)
   function applyOpusSettings(sdp, settings){
     try {

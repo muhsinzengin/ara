@@ -1,0 +1,86 @@
+/* Audio Level Indicator Styles */
+.audio-level-indicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.level-label {
+  font-size: 12px;
+  margin-bottom: 8px;
+  opacity: 0.8;
+}
+
+.level-bars {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.level-bar {
+  width: 4px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  transition: background-color 0.1s ease;
+}
+
+.level-bar.active {
+  background: #4CAF50;
+}
+
+.level-bar:nth-child(8).active,
+.level-bar:nth-child(9).active,
+.level-bar:nth-child(10).active {
+  background: #FF9800;
+}
+
+.level-bar:nth-child(10).active {
+  background: #F44336;
+}
+
+.level-value {
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .audio-level-indicator {
+    top: 10px;
+    right: 10px;
+    padding: 10px;
+    font-size: 12px;
+  }
+  
+  .level-bar {
+    width: 3px;
+    height: 15px;
+  }
+}
+
+/* Dark theme support */
+[data-theme="dark"] .audio-level-indicator {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Animation for level changes */
+.level-bar {
+  animation: pulse 0.1s ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scaleY(1); }
+  50% { transform: scaleY(1.1); }
+  100% { transform: scaleY(1); }
+}
