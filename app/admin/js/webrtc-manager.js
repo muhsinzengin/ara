@@ -27,6 +27,10 @@ class WebRTCManager {
       this.localStream = await navigator.mediaDevices.getUserMedia({
         audio: this.audioConstraints,
         video: { width: 1280, height: 720, facingMode: 'user' }
+      }).catch(err => {
+        console.error('[ADMIN WebRTC] getUserMedia error:', err);
+        this.hideLoading();
+        throw err;
       });
 
       console.log('[ADMIN WebRTC] Media acquired:', {
@@ -96,7 +100,22 @@ class WebRTCManager {
       console.log('[ADMIN WebRTC] Connection initialized for call:', callId);
     } catch (err) {
       console.error('[ADMIN WebRTC] Init error:', err);
+      this.hideLoading();
       throw err;
+    }
+  }
+
+  showLoading(text) {
+    const overlay = document.getElementById('fullLoadingOverlay');
+    if (overlay) {
+      overlay.classList.remove('hidden');
+    }
+  }
+
+  hideLoading() {
+    const overlay = document.getElementById('fullLoadingOverlay');
+    if (overlay) {
+      overlay.classList.add('hidden');
     }
   }
 

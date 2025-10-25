@@ -57,6 +57,7 @@ class UIManager {
     const activeList = document.getElementById('activeList');
     if (!activeList) return;
 
+    if (!window.adminPanel || !window.adminPanel.active) return;
     const activeCalls = Array.from(window.adminPanel.active.values());
 
     if (activeCalls.length === 0) {
@@ -88,6 +89,7 @@ class UIManager {
     const queueList = document.getElementById('queueList');
     if (!queueList) return;
 
+    if (!window.adminPanel || !window.adminPanel.active) return;
     const waitingCalls = Array.from(window.adminPanel.active.values())
       .filter(c => c.status === 'waiting');
 
@@ -137,6 +139,7 @@ class UIManager {
 
   // KPI'ları güncelle
   updateKPIs() {
+    if (!window.adminPanel || !window.adminPanel.active) return;
     const active = Array.from(window.adminPanel.active.values());
     const activeCount = active.filter(c => c.status !== 'waiting').length;
     const queueCount = active.filter(c => c.status === 'waiting').length;

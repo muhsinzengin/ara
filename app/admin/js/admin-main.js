@@ -24,6 +24,7 @@ class AdminPanel {
     this.localStream = null;
     this.currentCallId = null;
     this.isInCall = false;
+    this.sessionData = null;
     this.init();
   }
 
@@ -177,7 +178,8 @@ class AdminPanel {
 
   saveSession(callId) {
     const expires = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
-    localStorage.setItem('adminSession', JSON.stringify({ callId, expires }));
+    this.sessionData = { callId, expires };
+    localStorage.setItem('adminSession', JSON.stringify(this.sessionData));
   }
 
   loadSession() {
@@ -187,14 +189,17 @@ class AdminPanel {
     try {
       const session = JSON.parse(sessionData);
       if (new Date(session.expires) > new Date()) {
+        this.sessionData = session;
         $('#otpInput').dataset.callId = session.callId;
         this.showDashboard();
         return true;
       } else {
         localStorage.removeItem('adminSession');
+        this.sessionData = null;
       }
     } catch (err) {
       localStorage.removeItem('adminSession');
+      this.sessionData = null;
     }
     return false;
   }
@@ -207,6 +212,7 @@ class AdminPanel {
 
   logout() {
     localStorage.removeItem('adminSession');
+    this.sessionData = null;
     this.ui.showOTPScreen();
   }
 
@@ -276,13 +282,17 @@ class AdminPanel {
     }
   }
 
+  getSessionCallId() {
+    return this.sessionData?.callId || '';
+  }
+
   async acceptCall(callId) {
     try {
       const res = await fetch('/api/accept-call', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Call-ID': JSON.parse(localStorage.getItem('adminSession') || '{}').callId || ''
+          'X-Call-ID': this.getSessionCallId()
         },
         body: JSON.stringify({ callId: callId })
       });
@@ -319,7 +329,7 @@ class AdminPanel {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Call-ID': JSON.parse(localStorage.getItem('adminSession') || '{}').callId || ''
+          'X-Call-ID': this.getSessionCallId()
         },
         body: JSON.stringify({ callId })
       });
@@ -339,7 +349,7 @@ class AdminPanel {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Call-ID': JSON.parse(localStorage.getItem('adminSession') || '{}').callId || ''
+          'X-Call-ID': this.getSessionCallId()
         },
         body: JSON.stringify({ callId })
       });
@@ -364,7 +374,7 @@ class AdminPanel {
       const res = await fetch('/api/clear-active-calls', {
         method: 'POST',
         headers: {
-          'X-Call-ID': JSON.parse(localStorage.getItem('adminSession') || '{}').callId || ''
+          'X-Call-ID': this.getSessionCallId()
         }
       });
       const data = await res.json();
@@ -386,7 +396,7 @@ class AdminPanel {
       const res = await fetch('/api/clear-history', {
         method: 'POST',
         headers: {
-          'X-Call-ID': JSON.parse(localStorage.getItem('adminSession') || '{}').callId || ''
+          'X-Call-ID': this.getSessionCallId()
         }
       });
       const data = await res.json();
@@ -456,324 +466,12 @@ class AdminPanel {
     this.webrtc.updateCodecSettings(settings);
   }
 
-  // WebRTC Functions
-  async initWebRTC() {
-    try {
-      console.log('[ADMIN WebRTC] Initializing...');
-      
-      // Check if we're in a secure context
-      const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      if (!isSecure) {
-        throw new Error('HTTPS veya localhost gerekli');
-      }
-      
-      // Check WebRTC support
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('WebRTC not supported');
-      }
-      
-      // Skip permission check - let getUserMedia handle it
-      console.log('[ADMIN WebRTC] İzin kontrolü atlanıyor, direkt medya erişimi deneniyor...');
-      
-      // Get local media with simplified constraints
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true},
-        video: {width: {ideal: 640}, height: {ideal: 480}, frameRate: {ideal: 15}}
-      });
-      
-      console.log('[ADMIN WebRTC] Media acquired:', {
-        audio: this.localStream.getAudioTracks().length,
-        video: this.localStream.getVideoTracks().length
-      });
-      
-      // Set local video
-      const localVideo = $('#fullLocalVideo');
-      if (localVideo) {
-        localVideo.srcObject = this.localStream;
-      }
-      
-      // Create peer connection
-      this.pc = new RTCPeerConnection({
-        iceServers: [
-          {urls: 'stun:stun.l.google.com:19302'},
-          {urls: 'stun:global.stun.twilio.com:3478'}
-        ]
-      });
-      
-      // Add local tracks
-      this.localStream.getTracks().forEach(track => {
-        console.log('[ADMIN WebRTC] Adding track:', track.kind);
-        this.pc.addTrack(track, this.localStream);
-      });
-      
-      // Handle remote tracks
-      this.pc.ontrack = (event) => {
-        console.log('[ADMIN WebRTC] Remote track received:', event.track.kind);
-        const stream = event.streams[0];
-        
-        if (event.track.kind === 'video') {
-          const remoteVideo = $('#fullRemoteVideo');
-          if (remoteVideo) {
-            remoteVideo.srcObject = stream;
-          }
-        } else {
-          const remoteAudio = $('#fullRemoteAudio');
-          if (remoteAudio) {
-            remoteAudio.srcObject = stream;
-            remoteAudio.play().catch(e => console.log('[ADMIN WebRTC] Audio autoplay:', e));
-          }
-        }
-      };
-      
-      // Handle ICE candidates
-      this.pc.onicecandidate = async (event) => {
-        if (event.candidate && this.currentCallId) {
-          console.log('[ADMIN WebRTC] Sending ICE candidate');
-          await this.sendSignal('ice-candidate', {candidate: event.candidate});
-        }
-      };
-      
-      // Handle connection state
-      this.pc.onconnectionstatechange = () => {
-        console.log('[ADMIN WebRTC] Connection state:', this.pc.connectionState);
-        if (this.pc.connectionState === 'connected') {
-          console.log('[ADMIN WebRTC] ✅ Connected!');
-          this.isInCall = true;
-          this.updateCallUI(true);
-        }
-      };
-      
-      console.log('[ADMIN WebRTC] ✅ Initialized successfully');
-      return true;
-    } catch (error) {
-      console.error('[ADMIN WebRTC] Init error:', error);
-      
-      // Show permission warning if needed
-      if (error.message && (error.message.includes('izni reddedildi') || error.message.includes('Permission denied'))) {
-        this.showPermissionWarning();
-      }
-      
-      return false;
-    }
-  }
-  
-  async acceptCall(callId) {
-    try {
-      console.log('[ADMIN WebRTC] Accepting call:', callId);
-      this.currentCallId = callId;
-      
-      // Initialize WebRTC if not already done
-      if (!this.pc) {
-        const success = await this.initWebRTC();
-        if (!success) {
-          throw new Error('WebRTC initialization failed');
-        }
-      }
-      
-      // Show call UI
-      this.showCallUI();
-      
-      // Send accept signal to server
-      const response = await fetch('/api/accept-call', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({callId: callId})
-      });
-      
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to accept call');
-      }
-      
-      // Wait for offer from customer
-      await this.waitForOffer(callId);
-      
-    } catch (error) {
-      console.error('[ADMIN WebRTC] Accept call error:', error);
-      this.hideCallUI();
-    }
-  }
-  
-  async waitForOffer(callId) {
-    console.log('[ADMIN WebRTC] Waiting for offer...');
-    
-    const pollOffer = async () => {
-      try {
-        const response = await fetch(`/api/call-status/${callId}`);
-        const data = await response.json();
-        
-        if (data.success && data.offer) {
-          console.log('[ADMIN WebRTC] Offer received, creating answer...');
-          await this.handleOffer(data.offer);
-          return;
-        }
-        
-        // Continue polling if no offer yet
-        setTimeout(pollOffer, 1000);
-      } catch (error) {
-        console.error('[ADMIN WebRTC] Poll offer error:', error);
-      }
-    };
-    
-    pollOffer();
-  }
-  
-  async handleOffer(offer) {
-    try {
-      console.log('[ADMIN WebRTC] Handling offer...');
-      
-      await this.pc.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await this.pc.createAnswer();
-      await this.pc.setLocalDescription(answer);
-      
-      console.log('[ADMIN WebRTC] Sending answer...');
-      await this.sendSignal('answer', {answer: answer});
-      
-    } catch (error) {
-      console.error('[ADMIN WebRTC] Handle offer error:', error);
-    }
-  }
-  
-  async sendSignal(type, data) {
-    try {
-      let endpoint = '';
-      switch(type) {
-        case 'answer':
-          endpoint = '/api/webrtc-answer';
-          break;
-        case 'ice-candidate':
-          endpoint = '/api/ice-candidate';
-          break;
-        default:
-          console.error('Unknown signal type:', type);
-          return;
-      }
-      
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          callId: this.currentCallId,
-          ...data
-        })
-      });
-      
-      const result = await response.json();
-      if (!result.success) {
-        console.error('[ADMIN WebRTC] Signal error:', result.error);
-      }
-    } catch (error) {
-      console.error('[ADMIN WebRTC] Send signal error:', error);
-    }
-  }
-  
-  async endCall() {
-    try {
-      console.log('[ADMIN WebRTC] Ending call...');
-      
-      if (this.currentCallId) {
-        await fetch('/api/end-call', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({callId: this.currentCallId})
-        });
-      }
-      
-      this.cleanupWebRTC();
-      this.hideCallUI();
-      
-    } catch (error) {
-      console.error('[ADMIN WebRTC] End call error:', error);
-    }
-  }
-  
-  cleanupWebRTC() {
-    if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
-      this.localStream = null;
-    }
-    
-    if (this.pc) {
-      this.pc.close();
-      this.pc = null;
-    }
-    
-    this.currentCallId = null;
-    this.isInCall = false;
-  }
-  
-  showCallUI() {
-    const callUI = $('#callUI');
-    if (callUI) {
-      callUI.classList.remove('hidden');
-    }
-  }
-  
-  hideCallUI() {
-    const callUI = $('#callUI');
-    if (callUI) {
-      callUI.classList.add('hidden');
-    }
-  }
-  
-  toggleVideo() {
-    if (this.localStream) {
-      const videoTrack = this.localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        console.log('[ADMIN] Video toggled:', videoTrack.enabled);
-        
-        const videoBtn = $('#fullVideoBtn');
-        if (videoBtn) {
-          videoBtn.classList.toggle('muted', !videoTrack.enabled);
-        }
-      }
-    }
-  }
-  
-  toggleMic() {
-    if (this.localStream) {
-      const audioTrack = this.localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        console.log('[ADMIN] Mic toggled:', audioTrack.enabled);
-        
-        const micBtn = $('#fullMicBtn');
-        if (micBtn) {
-          micBtn.classList.toggle('muted', !audioTrack.enabled);
-        }
-      }
-    }
-  }
-  
-  toggleSpeaker() {
-    const remoteAudio = $('#fullRemoteAudio');
-    if (remoteAudio) {
-      remoteAudio.muted = !remoteAudio.muted;
-      console.log('[ADMIN] Speaker toggled:', !remoteAudio.muted);
-      
-      const speakerBtn = $('#fullSpeakerBtn');
-      if (speakerBtn) {
-        speakerBtn.classList.toggle('muted', remoteAudio.muted);
-      }
-    }
-  }
-
-  updateCallUI(inCall) {
-    const videoBtn = $('#fullVideoBtn');
-    const micBtn = $('#fullMicBtn');
-    const endBtn = $('#fullEndBtn');
-    
-    if (videoBtn) videoBtn.disabled = !inCall;
-    if (micBtn) micBtn.disabled = !inCall;
-    if (endBtn) endBtn.disabled = !inCall;
-  }
+  // WebRTC Functions removed - duplicate code
 
   // Cleanup
   cleanup() {
     this.intervals.forEach(id => clearInterval(id));
     this.intervals = [];
-    this.cleanupWebRTC();
 
     if (this.webrtc) {
       this.webrtc.cleanup();

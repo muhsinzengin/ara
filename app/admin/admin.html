@@ -20,7 +20,6 @@
   <link rel="stylesheet" href="/admin/css/admin-modals.css" />
 
   <!-- Scripts -->
-  <script src="/static/idb.js"></script>
   <script src="/static/webrtc-config.js"></script>
 </head>
 <body>
@@ -78,7 +77,7 @@
       <!-- Main Content -->
       <main class="main">
         <!-- Performance Grid -->
-        <div class="perf-grid">
+        <div class="perf-grid grid-4">
           <div class="perf">
             <div class="perf__lbl">Ses Kalitesi</div>
             <div class="perf__val" id="perfLoss">0%</div>
@@ -110,7 +109,7 @@
         </div>
 
         <!-- KPI Grid -->
-        <div class="kpi-grid">
+        <div class="kpi-grid grid-3">
           <div class="kpi">
             <div class="kpi__val" id="kActive">0</div>
             <div class="kpi__trend">Aktif Görüşme</div>
@@ -347,9 +346,6 @@
   </div>
 
   <!-- Scripts -->
-  <script src="/admin/js/performance-utils.js"></script>
-  <script src="/admin/js/storage-manager.js"></script>
-  <script src="/admin/js/notifications.js"></script>
   <script src="/static/common-utils.js"></script>
   <script src="/admin/js/ui-manager.js"></script>
   <script src="/admin/js/webrtc-manager.js"></script>

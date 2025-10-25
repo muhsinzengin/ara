@@ -44,8 +44,8 @@ RATE_LIMIT_PERIOD: int = int(os.getenv('RATE_LIMIT_PERIOD', '60'))
 HEARTBEAT_INTERVAL: int = int(os.getenv('HEARTBEAT_INTERVAL', '30'))
 CLEANUP_INTERVAL: int = int(os.getenv('CLEANUP_INTERVAL', '60'))
 MAX_CALL_DURATION_HOURS: int = int(os.getenv('MAX_CALL_DURATION_HOURS', '2'))
-DB_PATH: str = os.getenv('DB_PATH', 'production_data.db')
 DATABASE_URL: Optional[str] = os.getenv('DATABASE_URL')
+DB_PATH: str = os.getenv('DB_PATH', 'production_data.db') if not DATABASE_URL else ':memory:'
 LOG_FILE: str = os.getenv('LOG_FILE', 'production.log')
 LOG_MAX_SIZE_MB: int = int(os.getenv('LOG_MAX_SIZE_MB', '10'))
 LOG_BACKUP_COUNT: int = int(os.getenv('LOG_BACKUP_COUNT', '5'))
@@ -114,16 +114,12 @@ class AuthenticationError(APIError):
     def __init__(self, message: str = "Authentication required") -> None:
         super().__init__(message, 401)
 
-# Error handling decorator - Currently unused but kept for future use
-
 if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
     if os.getenv('DEBUG', 'false').lower() == 'true':
         print('WARNING: TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID not set. Telegram notifications disabled.')
     TELEGRAM_ENABLED = False
 else:
     TELEGRAM_ENABLED = True
-
-# Rate limiting configuration
 
 def check_rate_limit(client_ip):
     """Rate limiting kontrolü - OTPManager kullanarak"""
@@ -180,10 +176,8 @@ def sanitize_input(text):
 # Storage
 active_calls: Dict[str, Dict[str, Any]] = {}
 call_logs: List[Dict[str, Any]] = []
-otp_codes: Dict[str, Any] = {}
 admin_sessions: Dict[str, Dict[str, Any]] = {}
 data_lock: threading.Lock = threading.Lock()
-
 
 def generate_csrf_token():
     """CSRF token üret"""
@@ -980,33 +974,6 @@ class Handler(SimpleHTTPRequestHandler):
                     self.send_json({'success': True, 'message': 'ICE candidate received'})
                 else:
                     self.send_json({'success': False, 'error': 'Call not found'})
-            
-            # Record call start metrics
-            record_call_metrics('call_started', call_id, customer_name)
-            
-            active_calls[call_id] = {
-                'customer_name': customer_name,
-                'peer_id': data.get('peer_id'),
-                'status': 'waiting',
-                'timestamp': datetime.now(),
-                'last_heartbeat': datetime.now(),
-                'offer': None,
-                'answer': None,
-                'ice_candidates': []
-            }
-            
-            current_time = datetime.now().strftime('%H:%M:%S')
-            message = (
-                f"📞 <b>{customer_name}</b> arama sayfasina girdi!\n\n"
-                f"🔥 <b>Sizi ariyor ve baglanti bekliyor!</b>\n"
-                f"⏰ Saat: {current_time}\n"
-                f"🔐 Kod: <code>{otp}</code>\n"
-                f"🆔 ID: <code>{call_id[:8]}...</code>\n\n"
-                f"⚡ Musteriyi bekletmeyin!"
-            )
-            send_telegram_async(message)
-            print(f"New call: {customer_name} ({call_id[:8]})")
-            self.send_json({'success': True, 'call_id': call_id})
         
         elif path == '/api/signal':
             call_id = data.get('callId')
