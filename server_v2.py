@@ -45,6 +45,7 @@ HEARTBEAT_INTERVAL: int = int(os.getenv('HEARTBEAT_INTERVAL', '30'))
 CLEANUP_INTERVAL: int = int(os.getenv('CLEANUP_INTERVAL', '60'))
 MAX_CALL_DURATION_HOURS: int = int(os.getenv('MAX_CALL_DURATION_HOURS', '2'))
 DB_PATH: str = os.getenv('DB_PATH', 'production_data.db')
+DATABASE_URL: Optional[str] = os.getenv('DATABASE_URL')
 LOG_FILE: str = os.getenv('LOG_FILE', 'production.log')
 LOG_MAX_SIZE_MB: int = int(os.getenv('LOG_MAX_SIZE_MB', '10'))
 LOG_BACKUP_COUNT: int = int(os.getenv('LOG_BACKUP_COUNT', '5'))
@@ -1214,7 +1215,7 @@ Dashboard: {BASE_URL}/dashboard
 - Otomatik Temizlik: Her {CLEANUP_INTERVAL} saniye
 - Rate Limiting: {'Aktif' if RATE_LIMIT_ENABLED else 'Devre Disi'} ({RATE_LIMIT_CALLS}/{RATE_LIMIT_PERIOD}s)
 - Logging: {LOG_LEVEL} level
-- Database: {DB_PATH}
+- Database: {'Postgres' if DATABASE_URL else DB_PATH}
 - Max Call Duration: {MAX_CALL_DURATION_HOURS} saat
 
  Sunucu calisiyor... (Ctrl+C ile durdur)
