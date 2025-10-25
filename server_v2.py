@@ -412,8 +412,8 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header('X-Frame-Options', 'DENY')
         self.send_header('X-XSS-Protection', '1; mode=block')
         self.send_header('Referrer-Policy', 'strict-origin-when-cross-origin')
-        # Allow camera/microphone/speaker-selection on same-origin so WebRTC can work in tests
-        self.send_header('Permissions-Policy', 'camera=(self), microphone=(self), speaker-selection=(self), geolocation=()')
+        # Allow camera/microphone on same-origin; remove unsupported speaker-selection
+        self.send_header('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()')
         
         # CORS headers
         origin = self.headers.get('Origin', '')

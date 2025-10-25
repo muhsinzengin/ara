@@ -506,7 +506,7 @@
           this.pc.onicecandidate = async (event) => {
             if (event.candidate) {
               console.log('[INDEX WebRTC] ICE candidate:', event.candidate.type);
-              await this.sendSignal('ice', {candidate: event.candidate});
+              await this.sendSignal('ice-candidate', {candidate: event.candidate});
             } else {
               console.log('[INDEX WebRTC] ICE gathering complete');
             }
