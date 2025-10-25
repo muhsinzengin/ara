@@ -11,6 +11,7 @@ import logging
 import traceback
 import signal
 import sys
+import hashlib
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, urlencode
 import urllib.request
@@ -179,6 +180,8 @@ def sanitize_input(text):
 # Storage - Single source of truth: Database
 admin_sessions: Dict[str, Dict[str, Any]] = {}
 data_lock: threading.Lock = threading.Lock()
+active_calls: Dict[str, Dict[str, Any]] = {}
+call_logs: List[Dict[str, Any]] = []
 
 # Database instance
 from database import DatabaseManager
@@ -330,6 +333,8 @@ def get_system_metrics():
             'bitrate': 1500000,
             'fps': 30
         }
+
+def cleanup_expired():
     """Suresi dolmus OTP, session ve offline cagrılari temizle"""
     try:
         # OTP ve session temizleme (OTPManager kullan)

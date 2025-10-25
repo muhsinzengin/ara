@@ -1,12 +1,14 @@
+# Environment variables
+.env
+.env.local
+.env.production
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
-venv/
-ENV/
 build/
 develop-eggs/
 dist/
@@ -23,22 +25,28 @@ wheels/
 .installed.cfg
 *.egg
 
-# Environment
-.env
-.env.local
-.env.*.local
+# Virtual environments
+venv/
+env/
+ENV/
 
-# Database
+# Database files
 *.db
 *.sqlite
 *.sqlite3
+local_dev.db
 admin_data.db
-otp_backup.json
+production_data.db
 
 # Logs
 *.log
 logs/
 app.log
+
+# Backup files
+backup_*.db
+*.backup
+*.bak
 
 # IDE
 .vscode/
@@ -50,13 +58,22 @@ app.log
 # OS
 .DS_Store
 Thumbs.db
-desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+am_tmp.js
+
+# Test files
+test_*.py
+*_test.py
+tests/temp/
+
+# Documentation (keep only essential)
+*.md
+!README.md
+!docs/
 
 # Deployment
-nginx-canli-destek.conf
-canli-destek.service
-deploy-production.sh
-monitor.sh
-
-# Backup files
-*.bak
+.railway/
+.heroku/

@@ -1,6 +1,4 @@
 // Admin Main Controller - CSRF Protected
-const $ = (id) => document.getElementById(id.startsWith('#') ? id.substring(1) : id);
-
 class AdminPanel {
   constructor() {
     this.sessionData = null;
@@ -15,9 +13,29 @@ class AdminPanel {
   }
 
   bindEvents() {
-    $('#requestOtpBtn')?.addEventListener('click', () => this.requestOTP());
-    $('#verifyOtpBtn')?.addEventListener('click', () => this.verifyOTP());
-    $('#otpInput')?.addEventListener('keypress', (e) => e.key === 'Enter' && this.verifyOTP());
+    // OTP Buttons
+    CommonUtils.$('#requestOtpBtn')?.addEventListener('click', () => this.requestOTP());
+    CommonUtils.$('#verifyOtpBtn')?.addEventListener('click', () => this.verifyOTP());
+    CommonUtils.$('#otpInput')?.addEventListener('keypress', (e) => e.key === 'Enter' && this.verifyOTP());
+    
+    // Settings Toggle Buttons
+    CommonUtils.$('#toggleNoiseSuppression')?.addEventListener('click', () => this.toggleSetting('noiseSuppression'));
+    CommonUtils.$('#toggleEchoCancellation')?.addEventListener('click', () => this.toggleSetting('echoCancellation'));
+    CommonUtils.$('#toggleAutoGain')?.addEventListener('click', () => this.toggleSetting('autoGain'));
+    CommonUtils.$('#toggleDTX')?.addEventListener('click', () => this.toggleSetting('dtx'));
+    CommonUtils.$('#toggleFEC')?.addEventListener('click', () => this.toggleSetting('fec'));
+    CommonUtils.$('#toggleSimulcast')?.addEventListener('click', () => this.toggleSetting('simulcast'));
+    CommonUtils.$('#toggleHWAccel')?.addEventListener('click', () => this.toggleSetting('hwAccel'));
+    
+    // Codec Mode Buttons
+    CommonUtils.$('#codecAuto')?.addEventListener('click', () => this.setCodecMode('auto'));
+    CommonUtils.$('#codecManual')?.addEventListener('click', () => this.setCodecMode('manual'));
+    
+    // Call Control Buttons
+    CommonUtils.$('#fullVideoBtn')?.addEventListener('click', () => this.toggleVideo());
+    CommonUtils.$('#fullMicBtn')?.addEventListener('click', () => this.toggleMic());
+    CommonUtils.$('#fullSpeakerBtn')?.addEventListener('click', () => this.toggleSpeaker());
+    CommonUtils.$('#fullEndBtn')?.addEventListener('click', () => this.endCall());
   }
 
   async requestOTP() {
@@ -25,9 +43,9 @@ class AdminPanel {
       const res = await fetch('/api/request-admin-otp', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        $('#otpInputSection').classList.remove('hidden');
-        $('#otpInput').dataset.callId = data.callId;
-        $('#otpInput').focus();
+        CommonUtils.$('#otpInputSection').classList.remove('hidden');
+        CommonUtils.$('#otpInput').dataset.callId = data.callId;
+        CommonUtils.$('#otpInput').focus();
       }
     } catch (err) {
       console.error('OTP request error:', err);
@@ -35,8 +53,8 @@ class AdminPanel {
   }
 
   async verifyOTP() {
-    const otp = $('#otpInput').value.trim();
-    const callId = $('#otpInput').dataset.callId;
+    const otp = CommonUtils.$('#otpInput').value.trim();
+    const callId = CommonUtils.$('#otpInput').dataset.callId;
 
     if (!otp || otp.length !== 6) {
       this.showError('6 haneli OTP girin');
@@ -69,7 +87,7 @@ class AdminPanel {
   }
 
   showError(message) {
-    const errorEl = $('#otpError');
+    const errorEl = CommonUtils.$('#otpError');
     if (errorEl) {
       errorEl.textContent = message;
       errorEl.classList.remove('hidden');
@@ -187,6 +205,98 @@ class AdminPanel {
 
   refreshData() {
     this.loadRealData();
+  }
+
+  // Settings Toggle Methods
+  toggleSetting(settingName) {
+    const button = CommonUtils.$(`#toggle${settingName.charAt(0).toUpperCase() + settingName.slice(1)}`);
+    if (!button) return;
+    
+    const isOn = button.classList.contains('on');
+    button.classList.toggle('on', !isOn);
+    button.textContent = !isOn ? 'Açık' : 'Kapalı';
+    
+    // Apply setting to WebRTC if available
+    if (window.webrtcManager) {
+      this.applySettingToWebRTC(settingName, !isOn);
+    }
+    
+    console.log(`Setting ${settingName} ${!isOn ? 'enabled' : 'disabled'}`);
+  }
+
+  setCodecMode(mode) {
+    const autoBtn = CommonUtils.$('#codecAuto');
+    const manualBtn = CommonUtils.$('#codecManual');
+    
+    if (mode === 'auto') {
+      autoBtn?.classList.add('active');
+      manualBtn?.classList.remove('active');
+    } else {
+      manualBtn?.classList.add('active');
+      autoBtn?.classList.remove('active');
+    }
+    
+    console.log(`Codec mode set to: ${mode}`);
+  }
+
+  applySettingToWebRTC(settingName, enabled) {
+    if (!window.webrtcManager || !window.webrtcManager.localStream) return;
+    
+    const audioTrack = window.webrtcManager.localStream.getAudioTracks()[0];
+    if (!audioTrack) return;
+    
+    const constraints = {};
+    switch (settingName) {
+      case 'noiseSuppression':
+        constraints.noiseSuppression = enabled;
+        break;
+      case 'echoCancellation':
+        constraints.echoCancellation = enabled;
+        break;
+      case 'autoGain':
+        constraints.autoGainControl = enabled;
+        break;
+    }
+    
+    if (Object.keys(constraints).length > 0) {
+      audioTrack.applyConstraints({ advanced: [constraints] })
+        .catch(e => console.error('Failed to apply audio constraints:', e));
+    }
+  }
+
+  // Call Control Methods
+  toggleVideo() {
+    if (window.webrtcManager) {
+      const enabled = window.webrtcManager.toggleVideo();
+      CommonUtils.$('#fullVideoBtn').classList.toggle('off', !enabled);
+    }
+  }
+
+  toggleMic() {
+    if (window.webrtcManager) {
+      const enabled = window.webrtcManager.toggleMic();
+      CommonUtils.$('#fullMicBtn').classList.toggle('off', !enabled);
+    }
+  }
+
+  toggleSpeaker() {
+    const audio = CommonUtils.$('#fullRemoteAudio');
+    if (audio) {
+      audio.muted = !audio.muted;
+      CommonUtils.$('#fullSpeakerBtn').classList.toggle('off', audio.muted);
+    }
+  }
+
+  endCall() {
+    if (window.webrtcManager) {
+      window.webrtcManager.cleanup();
+    }
+    
+    // Hide call screen and show dashboard
+    CommonUtils.$('#fullCallScreen').classList.add('hidden');
+    CommonUtils.$('#dashboardScreen').classList.remove('hidden');
+    
+    console.log('Call ended');
   }
 }
 

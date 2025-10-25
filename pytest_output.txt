@@ -1,0 +1,29 @@
+2025-10-25 23:12:21,167 - root - INFO - Cleanup thread started
+2025-10-25 23:12:21,174 - root - INFO - 
+========================================
+   Canli Destek Sistemi v2.0
+   DEVELOPMENT MODE
+========================================
+
+Musteri: http://localhost:8080/
+Admin:   http://localhost:8080/admin
+Dashboard: http://localhost:8080/dashboard
+
+ Ozellikler:
+- OTP Guvenlik: 6 haneli, 8 saat
+- Telegram Bildirim: Devre Disi
+- Otomatik Temizlik: Her 60 saniye
+- Rate Limiting: Aktif (20/60s)
+- Logging: DEBUG level
+- Database: local_dev.db
+- Max Call Duration: 2 saat
+
+ Sunucu calisiyor... (Ctrl+C ile durdur)
+
+2025-10-25 23:12:21,531 - metrics - DEBUG - Request recorded: /api/healthz - 0.0ms - 200
+2025-10-25 23:12:21,531 - metrics - DEBUG - Request recorded: /api/healthz - 0.0ms - 200
+2025-10-25 23:12:21,549 - metrics - DEBUG - Call event recorded: call_started - Hfx3AZQS
+2025-10-25 23:12:21,549 - metrics - DEBUG - Request recorded: /api/create-call - 6.852626800537109ms - 200
+2025-10-25 23:12:21,561 - metrics - DEBUG - Request recorded: /api/ice-servers - 0.0ms - 200
+.
+1 passed in 0.62s

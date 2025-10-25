@@ -65,8 +65,11 @@ class LoadingManager {
   }
 
   static update(message) {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) overlay.querySelector('.loading-text').textContent = message;
+    const overlay = document.getElementById('loadingOverlay') || document.getElementById('fullLoadingOverlay');
+    if (overlay) {
+      const textElement = overlay.querySelector('.loading-text');
+      if (textElement) textElement.textContent = message;
+    }
   }
 }
 

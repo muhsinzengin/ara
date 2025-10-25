@@ -191,6 +191,29 @@ button, .btn {
 
 .toggle.on div {
   transform: translateX(20px);
+  background: var(--success);
+}
+
+/* Button Active States */
+.btn.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(30, 64, 175, 0.3);
+}
+
+.btn.active:hover {
+  background: var(--primary-dark);
+}
+
+/* Call Button States */
+.call-btn.off {
+  background: var(--danger);
+  opacity: 0.7;
+}
+
+.call-btn.active {
+  background: var(--success);
+  box-shadow: 0 0 10px rgba(5, 150, 105, 0.5);
 }
 
 /* Incoming call modal */

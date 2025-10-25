@@ -1,51 +1,184 @@
-// WebRTC Helpers - Shared between index and admin (global, non-module)
-;(function(){
-  const isSecureContext = () => (
-    location.protocol === 'https:' ||
-    location.hostname === 'localhost' ||
-    location.hostname === '127.0.0.1'
-  );
+// WebRTC Helpers - Enhanced and Clean
+(function() {
+  'use strict';
 
+  // Network quality detection
   async function detectNetworkQuality() {
     try {
-      const navConn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      if (navConn && navConn.effectiveType) {
-        const type = String(navConn.effectiveType || '').toLowerCase();
-        if (type.includes('4g')) return 'good';
-        if (type.includes('3g')) return 'medium';
-        return 'low';
-      }
-    } catch {}
-    // Fallback: assume good on secure contexts, medium otherwise
-    return isSecureContext() ? 'good' : 'medium';
-  }
-
-  function getOptimalConstraints(quality = 'good') {
-    // Base audio constraints
-    const audio = {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true
-    };
-
-    // Video constraints by quality
-    let video;
-    switch (quality) {
-      case 'good':
-        video = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
-        break;
-      case 'medium':
-        video = { width: { ideal: 960 }, height: { ideal: 540 }, frameRate: { ideal: 24 } };
-        break;
-      default:
-        video = { width: { ideal: 640 }, height: { ideal: 360 }, frameRate: { ideal: 20 } };
-        break;
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (!connection) return 'unknown';
+      
+      const { effectiveType, downlink, rtt } = connection;
+      
+      if (effectiveType === '4g' && downlink > 2 && rtt < 100) return 'excellent';
+      if (effectiveType === '4g' && downlink > 1 && rtt < 200) return 'good';
+      if (effectiveType === '3g' || (downlink > 0.5 && rtt < 300)) return 'fair';
+      return 'poor';
+    } catch {
+      return 'unknown';
     }
-    return { audio, video };
   }
 
-  window.WebRTCHelpers = { 
-    detectNetworkQuality, 
+  // Optimal constraints based on network quality
+  function getOptimalConstraints(quality = 'good') {
+    const profiles = {
+      excellent: {
+        audio: { sampleRate: 48000, channelCount: 2, bitrate: 128000 },
+        video: { width: 1920, height: 1080, frameRate: 30, bitrate: 4000000 }
+      },
+      good: {
+        audio: { sampleRate: 48000, channelCount: 1, bitrate: 64000 },
+        video: { width: 1280, height: 720, frameRate: 30, bitrate: 2000000 }
+      },
+      fair: {
+        audio: { sampleRate: 44100, channelCount: 1, bitrate: 32000 },
+        video: { width: 854, height: 480, frameRate: 24, bitrate: 1000000 }
+      },
+      poor: {
+        audio: { sampleRate: 22050, channelCount: 1, bitrate: 16000 },
+        video: { width: 640, height: 360, frameRate: 15, bitrate: 500000 }
+      }
+    };
+    
+    const profile = profiles[quality] || profiles.good;
+    return {
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: profile.audio.sampleRate,
+        channelCount: profile.audio.channelCount
+      },
+      video: {
+        width: { ideal: profile.video.width },
+        height: { ideal: profile.video.height },
+        frameRate: { ideal: profile.video.frameRate }
+      }
+    };
+  }
+
+  // SDP helpers
+  function applyOpusSettings(sdp, settings) {
+    try {
+      if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applyOpusSettings) {
+        return WebRTCConfig.applyOpusSettings(sdp, settings);
+      }
+      
+      const {
+        maxaveragebitrate = 64000,
+        stereo = 0,
+        useinbandfec = 1,
+        usedtx = 1,
+        maxplaybackrate = 48000,
+        complexity = 10,
+        packetloss = 0,
+        fec = 1,
+        cbr = 0,
+        application = 'voip'
+      } = settings || {};
+      
+      const opusMatch = sdp.match(/a=rtpmap:(\d+) opus\/48000/);
+      if (!opusMatch) return sdp;
+      
+      const opusPayload = opusMatch[1];
+      const fmtpLine = `a=fmtp:${opusPayload} minptime=10;useinbandfec=${useinbandfec};usedtx=${usedtx};maxaveragebitrate=${maxaveragebitrate};stereo=${stereo};maxplaybackrate=${maxplaybackrate};complexity=${complexity};packetloss=${packetloss};fec=${fec};cbr=${cbr};application=${application}`;
+      
+      const fmtpRegex = new RegExp(`a=fmtp:${opusPayload}.*\\r\\n`, 'g');
+      if (fmtpRegex.test(sdp)) {
+        return sdp.replace(fmtpRegex, fmtpLine + '\r\n');
+      } else {
+        return sdp.replace(new RegExp(`(a=rtpmap:${opusPayload}.*\\r\\n)`, 'g'), `$1${fmtpLine}\r\n`);
+      }
+    } catch {
+      return sdp;
+    }
+  }
+
+  function preferCodec(sdp, codecName, mimeType = 'video') {
+    try {
+      if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.preferCodec) {
+        return WebRTCConfig.preferCodec(sdp, codecName, mimeType);
+      }
+      
+      const lines = sdp.split('\r\n');
+      const mLineIndex = lines.findIndex(line => line.startsWith(`m=${mimeType}`));
+      if (mLineIndex === -1) return sdp;
+      
+      const codecRegex = new RegExp(`a=rtpmap:(\\d+) ${codecName}\\/`, 'i');
+      const codecLine = lines.find(line => codecRegex.test(line));
+      if (!codecLine) return sdp;
+      
+      const codecPayload = codecLine.match(codecRegex)[1];
+      const mLine = lines[mLineIndex];
+      const elements = mLine.split(' ');
+      const payloads = elements.slice(3);
+      const newPayloads = [codecPayload, ...payloads.filter(p => p !== codecPayload)];
+      lines[mLineIndex] = `${elements.slice(0, 3).join(' ')} ${newPayloads.join(' ')}`;
+      
+      return lines.join('\r\n');
+    } catch {
+      return sdp;
+    }
+  }
+
+  function applyBitrateConstraints(sdp, profile = 'auto') {
+    try {
+      if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applyBitrateConstraints) {
+        return WebRTCConfig.applyBitrateConstraints(sdp, profile);
+      }
+      return sdp;
+    } catch {
+      return sdp;
+    }
+  }
+
+  function enableHardwareAcceleration(sdp) {
+    try {
+      if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.enableHardwareAcceleration) {
+        return WebRTCConfig.enableHardwareAcceleration(sdp);
+      }
+      return sdp;
+    } catch {
+      return sdp;
+    }
+  }
+
+  function applySimulcast(sdp) {
+    try {
+      if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applySimulcast) {
+        return WebRTCConfig.applySimulcast(sdp);
+      }
+      return sdp;
+    } catch {
+      return sdp;
+    }
+  }
+
+  function getIceServers() {
+    if (typeof WebRTCConfig !== 'undefined') {
+      return WebRTCConfig.iceServers;
+    }
+    return [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+    ];
+  }
+
+  function getPeerConfig() {
+    return {
+      iceServers: getIceServers(),
+      iceCandidatePoolSize: 10,
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require'
+    };
+  }
+
+  // Export to global scope
+  window.WebRTCHelpers = {
+    detectNetworkQuality,
     getOptimalConstraints,
     applyOpusSettings,
     preferCodec,
@@ -55,117 +188,5 @@
     getIceServers,
     getPeerConfig
   };
-  // SDP helpers (wrap WebRTCConfig if available, else provide defaults)
-  function applyOpusSettings(sdp, settings){
-    try {
-      if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applyOpusSettings) {
-        return WebRTCConfig.applyOpusSettings(sdp, settings);
-      }
-      // Minimal local implementation
-      const {
-        maxaveragebitrate = 64000,
-        stereo = 0,
-        useinbandfec = 1,
-        usedtx = 1,
-        maxplaybackrate = 48000
-      } = settings || {};
-      const opusMatch = sdp.match(/a=rtpmap:(\d+) opus\/48000/);
-      if (!opusMatch) return sdp;
-      const opusPayload = opusMatch[1];
-      const fmtpLine = `a=fmtp:${opusPayload} minptime=10;useinbandfec=${useinbandfec};usedtx=${usedtx};maxaveragebitrate=${maxaveragebitrate};stereo=${stereo};maxplaybackrate=${maxplaybackrate}`;
-      const fmtpRegex = new RegExp(`a=fmtp:${opusPayload}.*\\r\\n`, 'g');
-      if (fmtpRegex.test(sdp)) {
-        return sdp.replace(fmtpRegex, fmtpLine + '\r\n');
-      } else {
-        return sdp.replace(new RegExp(`(a=rtpmap:${opusPayload}.*\\r\\n)`, 'g'), `$1${fmtpLine}\r\n`);
-      }
-    } catch { return sdp; }
-  }
 
-  function preferCodec(sdp, codecName, mimeType = 'video'){
-    try {
-      if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.preferCodec) {
-        return WebRTCConfig.preferCodec(sdp, codecName, mimeType);
-      }
-      const lines = sdp.split('\r\n');
-      const mLineIndex = lines.findIndex(line => line.startsWith(`m=${mimeType}`));
-      if (mLineIndex === -1) return sdp;
-      const codecRegex = new RegExp(`a=rtpmap:(\\\d+) ${codecName}\\/`, 'i');
-      const codecLine = lines.find(line => codecRegex.test(line));
-      if (!codecLine) return sdp;
-      const codecPayload = codecLine.match(codecRegex)[1];
-      const mLine = lines[mLineIndex];
-      const elements = mLine.split(' ');
-      const payloads = elements.slice(3);
-      const newPayloads = [codecPayload, ...payloads.filter(p => p !== codecPayload)];
-      lines[mLineIndex] = `${elements.slice(0, 3).join(' ')} ${newPayloads.join(' ')}`;
-      return lines.join('\r\n');
-    } catch { return sdp; }
-  }
-
-  function applyBitrateConstraints(sdp, profile='auto'){
-    if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applyBitrateConstraints){
-      return WebRTCConfig.applyBitrateConstraints(sdp, profile);
-    }
-    return sdp;
-  }
-
-  function enableHardwareAcceleration(sdp){
-    if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.enableHardwareAcceleration){
-      return WebRTCConfig.enableHardwareAcceleration(sdp);
-    }
-    return sdp;
-  }
-
-  function applySimulcast(sdp){
-    if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applySimulcast){
-      return WebRTCConfig.applySimulcast(sdp);
-    }
-    return sdp;
-  }
-
-  Object.assign(window.WebRTCHelpers, {
-    applyOpusSettings,
-    preferCodec,
-    applyBitrateConstraints,
-    enableHardwareAcceleration,
-    applySimulcast
-  });
-
-  // ICE/TURN config loader (env-driven if available)
-  let _iceCache = null;
-  async function getIceServers() {
-    if (_iceCache) return _iceCache;
-    try {
-      const res = await fetch('/api/ice-servers');
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.success && Array.isArray(data.iceServers)) {
-          _iceCache = data.iceServers;
-          return _iceCache;
-        }
-      }
-    } catch {}
-    if (typeof WebRTCConfig !== 'undefined' && Array.isArray(WebRTCConfig.iceServers)) {
-      _iceCache = WebRTCConfig.iceServers;
-      return _iceCache;
-    }
-    _iceCache = [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478' }
-    ];
-    return _iceCache;
-  }
-
-  async function getPeerConfig() {
-    const iceServers = await getIceServers();
-    return {
-      iceServers,
-      iceCandidatePoolSize: 10,
-      bundlePolicy: 'max-bundle',
-      rtcpMuxPolicy: 'require'
-    };
-  }
-
-  Object.assign(window.WebRTCHelpers, { getIceServers, getPeerConfig });
 })();

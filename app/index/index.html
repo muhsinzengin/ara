@@ -210,14 +210,14 @@
       <h1>🎥 Canlı Destek</h1>
       <p>Müşteri hizmetleri ile görüntülü konuşma</p>
     </div>
-    
+
     <div class="video-container">
       <video id="remoteVideo" class="remote-video" autoplay muted></video>
       <video id="localVideo" class="local-video" autoplay muted></video>
       
       <div id="statusText" class="status-text">Bağlanıyor...</div>
       <div id="timer" class="timer hidden">00:00</div>
-    </div>
+      </div>
     
     <div class="controls">
       <button id="micBtn" class="control-btn" data-label="Mikrofon">🎤</button>
@@ -226,19 +226,19 @@
       <button id="proximityBtn" class="control-btn" data-label="Ahize Modu">📱</button>
       <button id="fullscreenBtn" class="control-btn" data-label="Tam Ekran">⛶</button>
       <button id="endBtn" class="control-btn" data-label="Kapat">📞</button>
+      </div>
     </div>
-  </div>
 
   <div id="welcomeScreen" class="welcome-screen">
     <h2>👋 Hoş Geldiniz!</h2>
     <p>Destek ekibimizle görüntülü konuşma yapmak için adınızı girin</p>
     <input id="nameInput" class="name-input" type="text" placeholder="Adınızı girin..." maxlength="50">
     <button id="startBtn" class="start-btn" disabled>📞 Aramayı Başlat</button>
-  </div>
+    </div>
 
   <div id="loadingOverlay" class="loading-overlay hidden">
     <div class="loading-spinner"></div>
-    <div id="loadingText">Bağlanıyor...</div>
+    <div id="loadingText" class="loading-text">Bağlanıyor...</div>
   </div>
 
   <audio id="remoteAudio" autoplay></audio>
@@ -255,6 +255,7 @@
   <link rel="stylesheet" href="/static/audio-level-styles.css">
   <link rel="stylesheet" href="/static/video-quality-styles.css">
   <link rel="stylesheet" href="/static/mobile-optimizer-styles.css">
+  <link rel="stylesheet" href="/static/notification-styles.css">
 
   <script>
     // Customer Call - Optimized and Clean
@@ -339,7 +340,7 @@
           this.showCallScreen();
           await this.initWebRTC();
           
-        } catch (err) {
+          } catch (err) {
           this.hideLoading();
           console.error('[CustomerCall] Media access error:', err);
           CommonUtils.Notifications.error('Kamera/mikrofon erişimi reddedildi');
@@ -423,17 +424,17 @@
           let sdp = offer.sdp;
           if (typeof WebRTCHelpers !== 'undefined') {
             if (WebRTCHelpers.applyOpusSettings) {
-              sdp = WebRTCHelpers.applyOpusSettings(sdp, {
+            sdp = WebRTCHelpers.applyOpusSettings(sdp, {
                 maxaveragebitrate: 128000,
                 stereo: 1,
-                useinbandfec: 1,
-                usedtx: 1,
-                maxplaybackrate: 48000
-              });
-            }
-            
+              useinbandfec: 1,
+              usedtx: 1,
+              maxplaybackrate: 48000
+            });
+          }
+          
             if (WebRTCHelpers.preferCodec) {
-              sdp = WebRTCHelpers.preferCodec(sdp, 'VP9', 'video');
+            sdp = WebRTCHelpers.preferCodec(sdp, 'VP9', 'video');
             }
           }
           
@@ -475,14 +476,14 @@
       async pollSignals() {
         if (!this.callId || !this.pc) return;
 
-        try {
+          try {
           const res = await fetch('/api/poll-signal', {
-            method: 'POST',
+              method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ callId: this.callId })
-          });
-          const data = await res.json();
-
+            });
+            const data = await res.json();
+            
           if (data.success) {
             if (data.answer && !this.pc.currentRemoteDescription) {
               await this.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
@@ -490,7 +491,7 @@
 
             if (data.ice_candidates && data.ice_candidates.length > 0) {
               for (const candidate of data.ice_candidates) {
-                await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
               }
             }
           }

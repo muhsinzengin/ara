@@ -66,6 +66,22 @@ class DatabaseManager:
                 self._connection_pool.putconn(conn)
             else:
                 conn.close()
+
+    def _execute(self, cursor, query, params=None):
+        """Unified execute helper for SQLite and Postgres.
+        Converts SQLite-style placeholders ('?') to Postgres-style ('%s') when needed.
+        """
+        if self.is_postgres:
+            normalized_query = query.replace('?', '%s')
+            if params is None:
+                cursor.execute(normalized_query)
+            else:
+                cursor.execute(normalized_query, params)
+        else:
+            if params is None:
+                cursor.execute(query)
+            else:
+                cursor.execute(query, params)
     
     def init_database(self):
         """Initialize database tables"""

@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="../static/audio-level-styles.css" />
   <link rel="stylesheet" href="../static/video-quality-styles.css" />
   <link rel="stylesheet" href="../static/mobile-optimizer-styles.css" />
+  <link rel="stylesheet" href="../static/notification-styles.css" />
   <link rel="manifest" href="/static/manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Admin Panel" />
@@ -365,7 +366,16 @@
   </div>
 
   <!-- Loading overlay (WebRTCManager) -->
-  <div id="fullLoadingOverlay" class="hidden" aria-hidden="true"></div>
+  <div id="fullLoadingOverlay" class="hidden" aria-hidden="true">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Yükleniyor...</div>
+    <div class="loading-progress">
+      <div class="loading-progress-bar"></div>
+    </div>
+  </div>
+
+  <!-- Error Container -->
+  <div id="errorContainer"></div>
 
   <!-- Scripts -->
   <script src="/static/common-utils.js"></script>
