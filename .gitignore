@@ -57,3 +57,6 @@ nginx-canli-destek.conf
 canli-destek.service
 deploy-production.sh
 monitor.sh
+
+# Backup files
+*.bak
