@@ -1,0 +1,24 @@
+2025-10-25 14:12:09,609 - root - INFO - Cleanup thread started
+2025-10-25 14:12:09,616 - root - INFO - HTTPS enabled (certificate configuration needed)
+2025-10-25 14:12:09,617 - root - INFO - 
+========================================
+   Canli Destek Sistemi v2.0
+   PRODUCTION MODE
+========================================
+
+Musteri: https://yourdomain.com/
+Admin:   https://yourdomain.com/admin
+Dashboard: https://yourdomain.com/dashboard
+
+ Ozellikler:
+- OTP Guvenlik: 6 haneli, 12 saat
+- Telegram Bildirim: Devre Disi
+- Otomatik Temizlik: Her 60 saniye
+- Rate Limiting: Aktif (20/60s)
+- Logging: INFO level
+- Database: production_data.db
+- Max Call Duration: 2 saat
+
+ Sunucu calisiyor... (Ctrl+C ile durdur)
+
+2025-10-25 14:13:09,609 - root - INFO - Database cleanup completed

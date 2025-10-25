@@ -3,22 +3,23 @@ import hashlib
 import threading
 import time
 import re
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Tuple, Optional
 
 # Sabitler
 MAX_OTP_ATTEMPTS = 5
 OTP_VALIDITY_MINUTES = 10
-SESSION_TIMEOUT_HOURS = 12
+SESSION_TIMEOUT_HOURS = int(os.getenv('SESSION_TIMEOUT_HOURS', '8'))
 
-# Rate limiting için
-rate_limit_storage: Dict = {}
-RATE_LIMIT_REQUESTS = 50  # 50 istek
-RATE_LIMIT_WINDOW = 3600  # 1 saat
+# Rate limiting configuration - Environment variables
+RATE_LIMIT_REQUESTS = int(os.getenv('RATE_LIMIT_CALLS', '50'))  # Default 50 istek
+RATE_LIMIT_WINDOW = int(os.getenv('RATE_LIMIT_PERIOD', '3600'))  # Default 1 saat
 
 # Global storage
 otp_codes: Dict = {}
 admin_sessions: Dict = {}
+rate_limit_storage: Dict = {}  # Rate limiting storage
 data_lock = threading.Lock()
 
 
@@ -209,6 +210,15 @@ class OTPManager:
                     for data in otp_codes.values()
                 ]
             }
+
+    @staticmethod
+    def find_call_id_by_code(otp_input: str) -> Optional[str]:
+        """OTP kodundan call_id bul"""
+        with data_lock:
+            for cid, data in otp_codes.items():
+                if data['code'] == otp_input and datetime.now() < data['expires']:
+                    return cid
+        return None
 
 
 def start_cleanup_thread():

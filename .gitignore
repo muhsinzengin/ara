@@ -25,9 +25,20 @@ wheels/
 
 # Environment
 .env
-*.log
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+admin_data.db
 otp_backup.json
-telegram_failed.log
+
+# Logs
+*.log
+logs/
+app.log
 
 # IDE
 .vscode/
@@ -41,6 +52,8 @@ telegram_failed.log
 Thumbs.db
 desktop.ini
 
-# Test
-test_*.py
-*_test.py
+# Deployment
+nginx-canli-destek.conf
+canli-destek.service
+deploy-production.sh
+monitor.sh

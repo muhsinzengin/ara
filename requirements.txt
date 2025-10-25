@@ -1,2 +1,1 @@
-# No external dependencies needed
-# Server uses only Python standard library
+python-dotenv==1.0.0
