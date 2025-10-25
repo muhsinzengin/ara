@@ -24,10 +24,16 @@ class WebRTCManager {
 
     try {
       console.log('[ADMIN WebRTC] Requesting media...');
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        audio: this.audioConstraints,
-        video: { width: 1280, height: 720, facingMode: 'user' }
-      }).catch(err => {
+      
+      // Detect network quality
+      const quality = await this.detectNetworkQuality();
+      console.log('[ADMIN WebRTC] Network quality:', quality);
+      
+      // Get optimal constraints
+      const constraints = this.getOptimalConstraints(quality);
+      console.log('[ADMIN WebRTC] Using constraints:', constraints);
+      
+      this.localStream = await navigator.mediaDevices.getUserMedia(constraints).catch(err => {
         console.error('[ADMIN WebRTC] getUserMedia error:', err);
         this.hideLoading();
         throw err;
@@ -44,12 +50,19 @@ class WebRTCManager {
         localVideo.srcObject = this.localStream;
       }
 
-      this.pc = new RTCPeerConnection({
+      // Create peer connection with optimal config
+      const pcConfig = {
         iceServers: (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.iceServers) ? WebRTCConfig.iceServers : [
           {urls: 'stun:stun.l.google.com:19302'},
           {urls: 'stun:global.stun.twilio.com:3478'}
-        ]
-      });
+        ],
+        iceCandidatePoolSize: 10,
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require',
+        sdpSemantics: 'unified-plan'
+      };
+      
+      this.pc = new RTCPeerConnection(pcConfig);
 
       this.localStream.getTracks().forEach(track => {
         console.log('[ADMIN WebRTC] Adding track:', track.kind);
@@ -91,6 +104,7 @@ class WebRTCManager {
         if (this.pc.connectionState === 'connected') {
           console.log('[ADMIN WebRTC] ✅ Connection established!');
           this.startStatsMonitoring();
+          this.startQualityMonitoring();
         }
       };
 
@@ -154,10 +168,28 @@ class WebRTCManager {
             await this.pc.setRemoteDescription(new RTCSessionDescription(data.offer));
 
             const answer = await this.pc.createAnswer();
-            await this.pc.setLocalDescription(answer);
+            
+            // Apply Opus optimization
+            let sdp = answer.sdp;
+            if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applyOpusSettings) {
+              sdp = WebRTCConfig.applyOpusSettings(sdp, {
+                maxaveragebitrate: 96000,
+                stereo: 0,
+                useinbandfec: 1,
+                usedtx: 1,
+                maxplaybackrate: 48000
+              });
+            }
+            
+            // Prefer VP9 codec
+            if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.preferCodec) {
+              sdp = WebRTCConfig.preferCodec(sdp, 'VP9', 'video');
+            }
+            
+            await this.pc.setLocalDescription({type: 'answer', sdp});
 
-            console.log('[ADMIN WebRTC] Sending answer to INDEX');
-            await this.sendSignal('answer', { answer });
+            console.log('[ADMIN WebRTC] Sending optimized answer to INDEX');
+            await this.sendSignal('answer', { answer: {type: 'answer', sdp} });
           }
         }
       } catch (err) {
@@ -333,12 +365,159 @@ class WebRTCManager {
     return false;
   }
 
+  async detectNetworkQuality() {
+    try {
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (connection) {
+        const effectiveType = connection.effectiveType;
+        const downlink = connection.downlink;
+        
+        if (effectiveType === '4g' || downlink > 5) return 'high';
+        if (effectiveType === '3g' || downlink > 1.5) return 'medium';
+        return 'low';
+      }
+    } catch (err) {
+      console.log('[ADMIN WebRTC] Network detection failed, using auto');
+    }
+    return 'auto';
+  }
+
+  getOptimalConstraints(quality) {
+    const profiles = {
+      low: {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000
+        },
+        video: {
+          width: {ideal: 640},
+          height: {ideal: 480},
+          frameRate: {ideal: 15}
+        }
+      },
+      medium: {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000
+        },
+        video: {
+          width: {ideal: 1280},
+          height: {ideal: 720},
+          frameRate: {ideal: 24}
+        }
+      },
+      high: {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000
+        },
+        video: {
+          width: {ideal: 1920},
+          height: {ideal: 1080},
+          frameRate: {ideal: 30}
+        }
+      },
+      auto: {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000
+        },
+        video: {
+          width: {ideal: 1280},
+          height: {ideal: 720},
+          frameRate: {ideal: 30}
+        }
+      }
+    };
+    
+    return profiles[quality] || profiles.auto;
+  }
+
+  startQualityMonitoring() {
+    if (this.qualityInterval) clearInterval(this.qualityInterval);
+    
+    this.qualityInterval = setInterval(async () => {
+      if (!this.pc) return;
+      
+      try {
+        const stats = await this.pc.getStats();
+        let packetsLost = 0;
+        let packetsReceived = 0;
+        let bytesReceived = 0;
+        
+        stats.forEach(report => {
+          if (report.type === 'inbound-rtp') {
+            packetsLost += report.packetsLost || 0;
+            packetsReceived += report.packetsReceived || 0;
+            bytesReceived += report.bytesReceived || 0;
+          }
+        });
+        
+        const lossRate = packetsReceived > 0 ? (packetsLost / packetsReceived) * 100 : 0;
+        
+        // Auto quality adjustment
+        if (lossRate > 5) {
+          console.log('[ADMIN WebRTC] High packet loss:', lossRate.toFixed(2) + '%');
+          this.adjustQuality('down');
+        } else if (lossRate < 1 && bytesReceived > 1000000) {
+          this.adjustQuality('up');
+        }
+      } catch (err) {
+        console.error('[ADMIN WebRTC] Quality monitoring error:', err);
+      }
+    }, 5000);
+    
+    this.intervals.push(this.qualityInterval);
+  }
+
+  adjustQuality(direction) {
+    if (!this.pc || !this.localStream) return;
+    
+    const videoTrack = this.localStream.getVideoTracks()[0];
+    if (!videoTrack) return;
+    
+    const sender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+    if (!sender) return;
+    
+    const params = sender.getParameters();
+    if (!params.encodings || params.encodings.length === 0) {
+      params.encodings = [{}];
+    }
+    
+    const currentBitrate = params.encodings[0].maxBitrate || 2500000;
+    
+    if (direction === 'down') {
+      params.encodings[0].maxBitrate = Math.max(250000, currentBitrate * 0.7);
+      console.log('[ADMIN WebRTC] Reducing bitrate to:', params.encodings[0].maxBitrate);
+    } else if (direction === 'up') {
+      params.encodings[0].maxBitrate = Math.min(2500000, currentBitrate * 1.3);
+      console.log('[ADMIN WebRTC] Increasing bitrate to:', params.encodings[0].maxBitrate);
+    }
+    
+    sender.setParameters(params).catch(err => {
+      console.error('[ADMIN WebRTC] Failed to adjust quality:', err);
+    });
+  }
+
   // Cleanup
   cleanup() {
     console.log('[ADMIN WebRTC] Cleaning up...');
 
     this.intervals.forEach(id => clearInterval(id));
     this.intervals = [];
+    
+    if (this.qualityInterval) {
+      clearInterval(this.qualityInterval);
+      this.qualityInterval = null;
+    }
 
     if (this.pc) {
       this.pc.close();

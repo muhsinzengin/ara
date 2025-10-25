@@ -281,7 +281,30 @@ def remove_call_from_active(call_id: str, reason: str = 'unknown') -> bool:
     
     return True
 
-def cleanup_expired():
+def get_system_metrics():
+    """Sistem metriklerini al"""
+    try:
+        import psutil
+        return {
+            'cpu_usage': psutil.cpu_percent(interval=1),
+            'memory_usage': psutil.virtual_memory().percent,
+            'disk_usage': psutil.disk_usage('/').percent,
+            'packet_loss': 0.01,  # Simulated
+            'jitter': 25.5,  # Simulated
+            'bitrate': 1500000,  # Simulated
+            'fps': 30  # Simulated
+        }
+    except ImportError:
+        # psutil yoksa simüle edilmiş veriler
+        return {
+            'cpu_usage': 45.2,
+            'memory_usage': 67.8,
+            'disk_usage': 23.1,
+            'packet_loss': 0.01,
+            'jitter': 25.5,
+            'bitrate': 1500000,
+            'fps': 30
+        }
     """Suresi dolmus OTP, session ve offline cagrılari temizle"""
     try:
         # OTP ve session temizleme (OTPManager kullan)

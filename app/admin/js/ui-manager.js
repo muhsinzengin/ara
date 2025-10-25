@@ -59,6 +59,8 @@ class UIManager {
 
     if (!window.adminPanel || !window.adminPanel.active) return;
     const activeCalls = Array.from(window.adminPanel.active.values());
+    
+    this.updateQueue();
 
     if (activeCalls.length === 0) {
       activeList.innerHTML = '<div class="empty">Henüz aktif görüşme yok</div>';
@@ -144,47 +146,72 @@ class UIManager {
     const activeCount = active.filter(c => c.status !== 'waiting').length;
     const queueCount = active.filter(c => c.status === 'waiting').length;
 
-    // Aktif görüşme sayısı
     const kActive = document.getElementById('kActive');
     if (kActive) kActive.textContent = activeCount;
 
-    // Kuyruk sayısı
     const kQueue = document.getElementById('kQueue');
     if (kQueue) kQueue.textContent = queueCount;
 
-    // Bugün
     const today = new Date().toDateString();
     const todayCalls = this.history.filter(h => new Date(h.start_time).toDateString() === today);
     const kToday = document.getElementById('kToday');
     if (kToday) kToday.textContent = todayCalls.length;
 
-    // Bu hafta
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const weekCalls = this.history.filter(h => new Date(h.start_time) > weekAgo);
     const kWeek = document.getElementById('kWeek');
     if (kWeek) kWeek.textContent = weekCalls.length;
 
-    // Bu ay
     const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const monthCalls = this.history.filter(h => new Date(h.start_time) > monthAgo);
     const kMonth = document.getElementById('kMonth');
     if (kMonth) kMonth.textContent = monthCalls.length;
 
-    // Bu yıl
     const yearStart = new Date(new Date().getFullYear(), 0, 1);
     const yearCalls = this.history.filter(h => new Date(h.start_time) >= yearStart);
     const kYear = document.getElementById('kYear');
     if (kYear) kYear.textContent = yearCalls.length;
 
-    // Badge'ları güncelle
     const lblActive = document.getElementById('lblActive');
-    if (lblActive) lblActive.textContent = `${activeCount} aktif`;
+    if (lblActive) lblActive.textContent = activeCount;
 
     const lblQueue = document.getElementById('lblQueue');
-    if (lblQueue) lblQueue.textContent = `${queueCount} bekliyor`;
+    if (lblQueue) lblQueue.textContent = queueCount;
+  }
 
-    const historyCount = document.getElementById('historyCount');
-    if (historyCount) historyCount.textContent = `${this.history.length} kayıt`;
+  // Performance metrikleri güncelle
+  updatePerformance(stats) {
+    if (!stats) return;
+
+    const perfLoss = document.getElementById('perfLoss');
+    const perfLossBar = document.getElementById('perfLossBar');
+    if (perfLoss && stats.packetLoss !== undefined) {
+      const loss = Math.round(stats.packetLoss * 100);
+      perfLoss.textContent = loss + '%';
+      if (perfLossBar) perfLossBar.style.height = Math.min(loss * 10, 100) + '%';
+    }
+
+    const perfJitter = document.getElementById('perfJitter');
+    const perfJitterBar = document.getElementById('perfJitterBar');
+    if (perfJitter && stats.jitter !== undefined) {
+      perfJitter.textContent = Math.round(stats.jitter) + 'ms';
+      if (perfJitterBar) perfJitterBar.style.height = Math.min(stats.jitter / 2, 100) + '%';
+    }
+
+    const perfBitrate = document.getElementById('perfBitrate');
+    const perfBitrateBar = document.getElementById('perfBitrateBar');
+    if (perfBitrate && stats.bitrate !== undefined) {
+      const kbps = Math.round(stats.bitrate / 1000);
+      perfBitrate.textContent = kbps + 'kb/s';
+      if (perfBitrateBar) perfBitrateBar.style.height = Math.min(kbps / 10, 100) + '%';
+    }
+
+    const perfFps = document.getElementById('perfFps');
+    const perfFpsBar = document.getElementById('perfFpsBar');
+    if (perfFps && stats.fps !== undefined) {
+      perfFps.textContent = Math.round(stats.fps);
+      if (perfFpsBar) perfFpsBar.style.height = Math.min(stats.fps * 3.33, 100) + '%';
+    }
   }
 
   // Arama timer'ı

@@ -32,6 +32,7 @@ class AdminPanel {
     // Güvenli event listeners
     this.bindEvents();
     this.loadSession();
+    this.loadTheme();
     this.startPolling();
     this.loadRealData();
   }
@@ -48,6 +49,12 @@ class AdminPanel {
       otpInput.onkeypress = (e) => {
         if (e.key === 'Enter') this.verifyOTP();
       };
+    }
+
+    // Theme toggle
+    const themeToggle = $('#themeToggle');
+    if (themeToggle) {
+      themeToggle.onclick = () => this.toggleTheme();
     }
 
     // Arama kontrolleri
@@ -76,6 +83,31 @@ class AdminPanel {
 
     // Opus codec ayarları
     this.bindCodecSettings();
+  }
+
+  toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('admin-theme', newTheme);
+    
+    // Update theme icon
+    const themeIcon = document.querySelector('.theme-icon');
+    if (themeIcon) {
+      themeIcon.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+    }
+  }
+
+  loadTheme() {
+    const savedTheme = localStorage.getItem('admin-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    // Update theme icon
+    const themeIcon = document.querySelector('.theme-icon');
+    if (themeIcon) {
+      themeIcon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+    }
   }
 
   bindAudioSettings() {
@@ -234,51 +266,223 @@ class AdminPanel {
 
   async loadRealData() {
     try {
-      const res = await fetch('/api/active-calls');
-      const data = await res.json();
-
-      if (data.success && data.active_calls) {
-        this.updateActiveCalls(data.active_calls);
+      console.log('[ADMIN] Loading real data...');
+      
+      // Admin stats yükle
+      const statsResponse = await fetch('/api/admin-stats');
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json();
+        if (statsData.success) {
+          this.updateStats(statsData.stats);
+        }
       }
-    } catch (err) {
-      console.error('Load real data error:', err);
+      
+      // Aktif çağrıları yükle
+      const callsResponse = await fetch('/api/admin-calls');
+      if (callsResponse.ok) {
+        const callsData = await callsResponse.json();
+        if (callsData.success) {
+          this.updateActiveCalls(callsData.calls);
+        }
+      }
+      
+      // Sistem metriklerini yükle
+      const metricsResponse = await fetch('/api/metrics');
+      if (metricsResponse.ok) {
+        const metricsData = await metricsResponse.json();
+        if (metricsData.success) {
+          this.updateMetrics(metricsData.metrics);
+        }
+      }
+      
+      console.log('[ADMIN] Real data loaded successfully');
+    } catch (error) {
+      console.error('[ADMIN] Load real data error:', error);
+    }
+  }
+
+  updateStats(stats) {
+    // Aktif çağrı sayısı
+    const activeElement = $('#lblActive');
+    if (activeElement) {
+      activeElement.textContent = stats.active_calls || 0;
+    }
+    
+    // Kuyruk sayısı
+    const queueElement = $('#lblQueue');
+    if (queueElement) {
+      queueElement.textContent = stats.queue_count || 0;
+    }
+    
+    // Bugünkü çağrılar
+    const todayElement = $('#todayCalls');
+    if (todayElement) {
+      todayElement.textContent = stats.today_calls || 0;
+    }
+    
+    // Haftalık çağrılar
+    const weekElement = $('#weekCalls');
+    if (weekElement) {
+      weekElement.textContent = stats.week_calls || 0;
+    }
+    
+    // Aylık çağrılar
+    const monthElement = $('#monthCalls');
+    if (monthElement) {
+      monthElement.textContent = stats.month_calls || 0;
+    }
+    
+    // Yıllık çağrılar
+    const yearElement = $('#yearCalls');
+    if (yearElement) {
+      yearElement.textContent = stats.year_calls || 0;
+    }
+  }
+
+  updateMetrics(metrics) {
+    // Paket kaybı
+    const lossElement = $('#perfLoss');
+    const lossBarElement = $('#perfLossBar');
+    if (lossElement && metrics.packet_loss !== undefined) {
+      const loss = Math.round(metrics.packet_loss * 100);
+      lossElement.textContent = loss + '%';
+      if (lossBarElement) {
+        lossBarElement.style.height = Math.min(loss, 100) + '%';
+        lossBarElement.style.backgroundColor = loss > 5 ? 'var(--danger)' : 'var(--success)';
+      }
+    }
+    
+    // Gecikme
+    const jitterElement = $('#perfJitter');
+    const jitterBarElement = $('#perfJitterBar');
+    if (jitterElement && metrics.jitter !== undefined) {
+      const jitter = Math.round(metrics.jitter);
+      jitterElement.textContent = jitter + 'ms';
+      if (jitterBarElement) {
+        const height = Math.min((jitter / 100) * 100, 100);
+        jitterBarElement.style.height = height + '%';
+        jitterBarElement.style.backgroundColor = jitter > 50 ? 'var(--danger)' : 'var(--success)';
+      }
+    }
+    
+    // Bitrate
+    const bitrateElement = $('#perfBitrate');
+    const bitrateBarElement = $('#perfBitrateBar');
+    if (bitrateElement && metrics.bitrate !== undefined) {
+      const bitrate = Math.round(metrics.bitrate / 1000);
+      bitrateElement.textContent = bitrate + 'kbps';
+      if (bitrateBarElement) {
+        const height = Math.min((bitrate / 1000) * 100, 100);
+        bitrateBarElement.style.height = height + '%';
+        bitrateBarElement.style.backgroundColor = bitrate < 500 ? 'var(--warning)' : 'var(--success)';
+      }
+    }
+    
+    // CPU kullanımı
+    const cpuElement = $('#perfCpu');
+    const cpuBarElement = $('#perfCpuBar');
+    if (cpuElement && metrics.cpu_usage !== undefined) {
+      const cpu = Math.round(metrics.cpu_usage);
+      cpuElement.textContent = cpu + '%';
+      if (cpuBarElement) {
+        cpuBarElement.style.height = cpu + '%';
+        cpuBarElement.style.backgroundColor = cpu > 80 ? 'var(--danger)' : cpu > 60 ? 'var(--warning)' : 'var(--success)';
+      }
     }
   }
 
   updateActiveCalls(calls) {
-    const currentIds = new Set(calls.map(c => c.call_id));
-
-    // Eski çağrıları kaldır
-    for (const [id, call] of this.active) {
-      if (!currentIds.has(id)) {
-        this.active.delete(id);
-      }
-    }
-
-    // Yeni çağrıları ekle/güncelle
+    // Aktif çağrıları güncelle
+    this.active.clear();
     calls.forEach(call => {
-      const existing = this.active.get(call.call_id);
-      if (!existing || existing.status !== call.status) {
-        this.active.set(call.call_id, {
-          id: call.call_id,
-          name: call.customer_name,
-          status: call.status,
-          timestamp: call.formatted_time,
-          date: call.formatted_date,
-          minutesAgo: call.minutes_ago
-        });
-      }
+      this.active.set(call.call_id, {
+        id: call.call_id,
+        name: call.customer_name,
+        status: call.status,
+        timestamp: call.start_time,
+        admin_connected: call.admin_connected
+      });
     });
-
-    this.ui.updateActiveCalls();
-    this.ui.updateKPIs();
-
+    
+    // UI'yi güncelle
+    this.renderActiveCalls();
+    this.updateKPIs();
+    
     // Otomatik kabul
     if (this.autoAccept) {
       const waitingCalls = Array.from(this.active.values()).filter(c => c.status === 'waiting');
       if (waitingCalls.length > 0) {
         this.acceptCall(waitingCalls[0].id);
       }
+    }
+  }
+
+  renderActiveCalls() {
+    const callsContainer = $('#activeCallsList');
+    if (!callsContainer) return;
+    
+    callsContainer.innerHTML = '';
+    
+    if (this.active.size === 0) {
+      callsContainer.innerHTML = '<div class="empty-state">📞 Aktif çağrı yok</div>';
+      return;
+    }
+    
+    this.active.forEach((call, callId) => {
+      const callElement = document.createElement('div');
+      callElement.className = 'call-item';
+      callElement.innerHTML = `
+        <div class="call-info">
+          <div class="call-name">${call.name || 'Bilinmeyen'}</div>
+          <div class="call-status ${call.status}">${this.getStatusText(call.status)}</div>
+          <div class="call-time">${this.formatTime(call.timestamp)}</div>
+        </div>
+        <div class="call-actions">
+          ${call.status === 'waiting' ? 
+            `<button class="btn btn--primary" onclick="window.adminPanel.acceptCall('${callId}')">📞 Kabul Et</button>` :
+            call.status === 'active' ?
+            `<button class="btn btn--danger" onclick="window.adminPanel.endCall('${callId}')">📞 Bitir</button>` :
+            ''
+          }
+        </div>
+      `;
+      callsContainer.appendChild(callElement);
+    });
+  }
+
+  getStatusText(status) {
+    const statusMap = {
+      'waiting': 'Bekliyor',
+      'active': 'Aktif',
+      'ended': 'Bitti',
+      'cancelled': 'İptal'
+    };
+    return statusMap[status] || status;
+  }
+
+  formatTime(timeString) {
+    if (!timeString) return '-';
+    try {
+      const time = new Date(timeString);
+      return time.toLocaleTimeString('tr-TR');
+    } catch {
+      return timeString;
+    }
+  }
+
+  updateKPIs() {
+    // KPI'ları güncelle
+    const activeCount = Array.from(this.active.values()).filter(call => call.status === 'active').length;
+    const waitingCount = Array.from(this.active.values()).filter(call => call.status === 'waiting').length;
+    
+    const activeElement = $('#lblActive');
+    if (activeElement) {
+      activeElement.textContent = activeCount;
+    }
+    
+    const queueElement = $('#lblQueue');
+    if (queueElement) {
+      queueElement.textContent = waitingCount;
     }
   }
 
@@ -303,7 +507,7 @@ class AdminPanel {
         this.currentCallId = callId;
         
         // Initialize WebRTC if not already done
-        if (!this.pc) {
+        if (!this.webrtc || !this.webrtc.pc) {
           const success = await this.initWebRTC();
           if (!success) {
             throw new Error('WebRTC initialization failed');
@@ -403,11 +607,86 @@ class AdminPanel {
 
       if (data.success) {
         this.history = [];
+        this.showNotification('Geçmiş temizlendi', 'success');
+        this.loadRealData();
         this.ui.updateHistory();
         this.ui.updateKPIs();
       }
     } catch (err) {
       console.error('Clear history error:', err);
+    }
+  }
+
+  // UI Manager referansı
+  get ui() {
+    return this._ui;
+  }
+  set ui(value) {
+    this._ui = value;
+  }
+
+  // WebRTC Manager referansı
+  get webrtc() {
+    return this._webrtc;
+  }
+  set webrtc(value) {
+    this._webrtc = value;
+  }
+
+  async initWebRTC() {
+    try {
+      this.webrtc = new WebRTCManager();
+      await this.webrtc.initConnection(this.currentCallId);
+      return true;
+    } catch (err) {
+      console.error('Init WebRTC error:', err);
+      this.showPermissionWarning();
+      return false;
+    }
+  }
+
+  showCallUI() {
+    if (this.ui && typeof this.ui.showCallScreen === 'function') {
+      this.ui.showCallScreen(this.currentCallId);
+    } else {
+      const otp = $('#otpScreen');
+      const dash = $('#dashboardScreen');
+      const full = $('#fullCallScreen');
+      if (otp) otp.classList.add('hidden');
+      if (dash) dash.classList.add('hidden');
+      if (full) full.classList.remove('hidden');
+    }
+  }
+
+  async waitForOffer(callId) {
+    // WebRTCManager kendi içinde sinyal beklemeyi başlatıyor
+    return Promise.resolve();
+  }
+
+  toggleMic() {
+    if (this.webrtc) {
+      return this.webrtc.toggleMic();
+    }
+    return false;
+  }
+
+  toggleVideo() {
+    if (this.webrtc) {
+      return this.webrtc.toggleVideo();
+    }
+    return false;
+  }
+
+  toggleSpeaker() {
+    if (this.webrtc) {
+      return this.webrtc.toggleSpeaker();
+    }
+    return false;
+  }
+
+  endCall() {
+    if (this.webrtc) {
+      this.closeCall(this.webrtc.currentCallId);
     }
   }
 
@@ -479,7 +758,7 @@ class AdminPanel {
     }
   }
   
-  // Show permission warning
+  // Show permission warning (matched with Index design)
   showPermissionWarning() {
     const warningDiv = document.createElement('div');
     warningDiv.style.cssText = `

@@ -58,7 +58,7 @@
 
     /* Call Screen */
     .call-screen{position:fixed; inset:0; background:#000; display:flex; flex-direction:column}
-    .call-header{display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:rgba(0,0,0,.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); z-index:100}
+    .call-header{display:flex; align-items:center; justify-content:space-between; padding:16px 20px; padding-left:calc(20px + env(safe-area-inset-left)); padding-right:calc(20px + env(safe-area-inset-right)); background:rgba(0,0,0,.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); z-index:100}
     .status{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600}
     .status-dot{width:8px; height:8px; border-radius:50%; background:var(--primary); animation:pulse 2s infinite}
     @keyframes pulse{0%,100%{opacity:1} 50%{opacity:.5}}
@@ -81,7 +81,7 @@
     }
 
     /* Video */
-    .video-container{flex:1; position:relative; background:#1a1a1a; overflow:hidden}
+    .video-container{flex:1; position:relative; background:#1a1a1a; overflow:hidden; touch-action:pan-x pan-y}
     .fullscreen-btn{position:absolute; top:5px; left:5px; width:44px; height:44px; background:rgba(0,0,0,.7); border:none; border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:60; transition:all .3s; backdrop-filter:blur(10px)}
     .fullscreen-btn:hover{background:rgba(0,0,0,.9); transform:scale(1.1)}
     .fullscreen-btn:active{transform:scale(.95)}
@@ -108,7 +108,7 @@
     .loading-text{color:white; font-size:16px}
 
     /* Controls */
-    .controls{display:flex; justify-content:space-around; align-items:center; padding:16px 10px 12px; background:linear-gradient(to top,rgba(0,0,0,.95),rgba(0,0,0,.7)); backdrop-filter:blur(20px); z-index:100}
+    .controls{display:flex; justify-content:space-around; align-items:center; padding:16px 10px calc(12px + env(safe-area-inset-bottom)); background:linear-gradient(to top,rgba(0,0,0,.95),rgba(0,0,0,.7)); backdrop-filter:blur(20px); z-index:100}
     .control-btn{position:relative; width:46px; height:46px; border-radius:50%; border:2px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer; transition:all .3s; margin-bottom:18px}
     .control-btn:active{transform:scale(.95)}
     .control-btn::after{content:attr(data-label); position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font-size:10px; font-weight:600; color:white; white-space:nowrap}
@@ -187,7 +187,14 @@
       }
     }
 
-    /* iOS Safari specific fixes */
+    /* Viewport height fixes */
+@supports (height: 100dvh) {
+  .call-screen { min-height: 100dvh; }
+}
+@supports not (height: 100dvh) {
+  .call-screen { min-height: calc(var(--vh, 1vh) * 100); }
+}
+/* iOS Safari specific fixes */
     @supports (-webkit-touch-callout: none) {
       .call-screen {
         -webkit-overflow-scrolling: touch;
@@ -456,15 +463,15 @@
             console.warn('[INDEX WebRTC] Not secure context, but continuing for localhost testing');
           }
           
-          // Skip permission check - let getUserMedia handle it
-          console.log('[INDEX WebRTC] İzin kontrolü atlanıyor, direkt medya erişimi deneniyor...');
+          // Detect network quality
+          const quality = await this.detectNetworkQuality();
+          console.log('[INDEX WebRTC] Network quality:', quality);
           
-          this.localStream = await navigator.mediaDevices.getUserMedia(
-            window.mobileWebRTCOptions || {
-              audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true},
-              video: {width: {ideal: 640}, height: {ideal: 480}, frameRate: {ideal: 15}}
-            }
-          );
+          // Get optimal constraints
+          const constraints = this.getOptimalConstraints(quality);
+          console.log('[INDEX WebRTC] Using constraints:', constraints);
+          
+          this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
           console.log('[INDEX WebRTC] Media acquired:', {
             audio: this.localStream.getAudioTracks().length,
             video: this.localStream.getVideoTracks().length
@@ -476,12 +483,18 @@
           }
           this.hideLoading();
 
-          this.pc = new RTCPeerConnection({
+          // Create peer connection with optimal config
+          const pcConfig = {
             iceServers: (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.iceServers) ? WebRTCConfig.iceServers : [
               {urls: 'stun:stun.l.google.com:19302'},
               {urls: 'stun:global.stun.twilio.com:3478'}
-            ]
-          });
+            ],
+            iceCandidatePoolSize: 10,
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
+          };
+          
+          this.pc = new RTCPeerConnection(pcConfig);
 
           this.localStream.getTracks().forEach(track => {
             console.log('[INDEX WebRTC] Adding track:', track.kind);
@@ -518,14 +531,36 @@
               console.log('[INDEX WebRTC] ✅ Connection established!');
               Notifications.success('Bağlantı kuruldu!');
               this.startTimer();
+              this.startQualityMonitoring();
             }
           };
 
           console.log('[INDEX WebRTC] Creating offer...');
-          const offer = await this.pc.createOffer();
-          await this.pc.setLocalDescription(offer);
-          console.log('[INDEX WebRTC] Sending offer to ADMIN');
-          await this.sendSignal('offer', {offer});
+          const offer = await this.pc.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true
+          });
+          
+          // Apply Opus optimization
+          let sdp = offer.sdp;
+          if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applyOpusSettings) {
+            sdp = WebRTCConfig.applyOpusSettings(sdp, {
+              maxaveragebitrate: 96000,
+              stereo: 0,
+              useinbandfec: 1,
+              usedtx: 1,
+              maxplaybackrate: 48000
+            });
+          }
+          
+          // Prefer VP9 codec for better quality
+          if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.preferCodec) {
+            sdp = WebRTCConfig.preferCodec(sdp, 'VP9', 'video');
+          }
+          
+          await this.pc.setLocalDescription({type: 'offer', sdp});
+          console.log('[INDEX WebRTC] Sending optimized offer to ADMIN');
+          await this.sendSignal('offer', {offer: {type: 'offer', sdp}});
           this.pollSignals();
         } catch (err) {
           console.error('[INDEX WebRTC] Init error:', err);
@@ -533,7 +568,7 @@
           
           // Show permission warning if needed
           if (err.message && (err.message.includes('izni reddedildi') || err.message.includes('Permission denied'))) {
-            this.showPermissionWarning();
+            showPermissionWarning();
           } else {
             let errorMessage = 'Kamera/mikrofon erişimi reddedildi';
             if (err.name === 'NotAllowedError') {
@@ -825,11 +860,161 @@
         if (overlay) overlay.classList.add('hidden');
       }
 
+      async detectNetworkQuality() {
+        try {
+          const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+          if (connection) {
+            const effectiveType = connection.effectiveType;
+            const downlink = connection.downlink;
+            
+            if (effectiveType === '4g' || downlink > 5) return 'high';
+            if (effectiveType === '3g' || downlink > 1.5) return 'medium';
+            return 'low';
+          }
+        } catch (err) {
+          console.log('[INDEX WebRTC] Network detection failed, using auto');
+        }
+        return 'auto';
+      }
+
+      getOptimalConstraints(quality) {
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+          // Mobile optimizations
+          if (/Android/.test(navigator.userAgent)) {
+            return {
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 48000
+              },
+              video: {
+                width: {ideal: 640, max: 1280},
+                height: {ideal: 480, max: 720},
+                frameRate: {ideal: 24, max: 30},
+                facingMode: 'user'
+              }
+            };
+          } else {
+            // iOS
+            return {
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true,
+                sampleRate: 48000
+              },
+              video: {
+                width: {ideal: 1280},
+                height: {ideal: 720},
+                frameRate: {ideal: 30},
+                facingMode: 'user'
+              }
+            };
+          }
+        }
+        
+        // Desktop - High quality
+        const profiles = {
+          low: {
+            audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000},
+            video: {width: {ideal: 640}, height: {ideal: 480}, frameRate: {ideal: 15}}
+          },
+          medium: {
+            audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000},
+            video: {width: {ideal: 1280}, height: {ideal: 720}, frameRate: {ideal: 24}}
+          },
+          high: {
+            audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000},
+            video: {width: {ideal: 1920}, height: {ideal: 1080}, frameRate: {ideal: 30}}
+          },
+          auto: {
+            audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000},
+            video: {width: {ideal: 1280}, height: {ideal: 720}, frameRate: {ideal: 30}}
+          }
+        };
+        
+        return profiles[quality] || profiles.auto;
+      }
+
+      startQualityMonitoring() {
+        if (this.qualityInterval) clearInterval(this.qualityInterval);
+        
+        this.qualityInterval = setInterval(async () => {
+          if (!this.pc) return;
+          
+          try {
+            const stats = await this.pc.getStats();
+            let packetsLost = 0;
+            let packetsReceived = 0;
+            let bytesReceived = 0;
+            let jitter = 0;
+            
+            stats.forEach(report => {
+              if (report.type === 'inbound-rtp') {
+                packetsLost += report.packetsLost || 0;
+                packetsReceived += report.packetsReceived || 0;
+                bytesReceived += report.bytesReceived || 0;
+                jitter += report.jitter || 0;
+              }
+            });
+            
+            const lossRate = packetsReceived > 0 ? (packetsLost / packetsReceived) * 100 : 0;
+            
+            // Auto quality adjustment
+            if (lossRate > 5) {
+              console.log('[INDEX WebRTC] High packet loss detected:', lossRate.toFixed(2) + '%');
+              this.adjustQuality('down');
+            } else if (lossRate < 1 && bytesReceived > 1000000) {
+              this.adjustQuality('up');
+            }
+          } catch (err) {
+            console.error('[INDEX WebRTC] Quality monitoring error:', err);
+          }
+        }, 5000);
+      }
+
+      adjustQuality(direction) {
+        if (!this.pc || !this.localStream) return;
+        
+        const videoTrack = this.localStream.getVideoTracks()[0];
+        if (!videoTrack) return;
+        
+        const sender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (!sender) return;
+        
+        const params = sender.getParameters();
+        if (!params.encodings || params.encodings.length === 0) {
+          params.encodings = [{}];
+        }
+        
+        const currentBitrate = params.encodings[0].maxBitrate || 2500000;
+        
+        if (direction === 'down') {
+          params.encodings[0].maxBitrate = Math.max(250000, currentBitrate * 0.7);
+          console.log('[INDEX WebRTC] Reducing bitrate to:', params.encodings[0].maxBitrate);
+        } else if (direction === 'up') {
+          params.encodings[0].maxBitrate = Math.min(2500000, currentBitrate * 1.3);
+          console.log('[INDEX WebRTC] Increasing bitrate to:', params.encodings[0].maxBitrate);
+        }
+        
+        sender.setParameters(params).catch(err => {
+          console.error('[INDEX WebRTC] Failed to adjust quality:', err);
+        });
+      }
+
       async endCall() {
         // Heartbeat'i durdur
         if (this.heartbeatInterval) {
           clearInterval(this.heartbeatInterval);
           this.heartbeatInterval = null;
+        }
+        
+        if (this.qualityInterval) {
+          clearInterval(this.qualityInterval);
+          this.qualityInterval = null;
         }
         
         // Backend'e çağrı sonlandırıldı bilgisi gönder

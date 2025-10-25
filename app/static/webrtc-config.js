@@ -157,6 +157,77 @@ const WebRTCConfig = {
     lines[mLineIndex] = `${elements.slice(0, 3).join(' ')} ${newPayloads.join(' ')}`;
 
     return lines.join('\r\n');
+  },
+
+  // Enable hardware acceleration hints
+  enableHardwareAcceleration(sdp) {
+    // Add hardware acceleration hints for supported codecs
+    let modifiedSdp = sdp;
+    
+    // VP9 hardware acceleration
+    modifiedSdp = modifiedSdp.replace(
+      /(a=rtpmap:\d+ VP9\/\d+\r\n)/g,
+      '$1a=rtcp-fb:* goog-remb\r\na=rtcp-fb:* transport-cc\r\n'
+    );
+    
+    // H264 hardware acceleration
+    modifiedSdp = modifiedSdp.replace(
+      /(a=rtpmap:\d+ H264\/\d+\r\n)/g,
+      '$1a=rtcp-fb:* goog-remb\r\na=rtcp-fb:* transport-cc\r\n'
+    );
+    
+    return modifiedSdp;
+  },
+
+  // Apply simulcast for better quality adaptation
+  applySimulcast(sdp) {
+    const lines = sdp.split('\r\n');
+    const videoMLineIndex = lines.findIndex(line => line.startsWith('m=video'));
+    
+    if (videoMLineIndex === -1) return sdp;
+    
+    // Add simulcast attributes
+    const simulcastLine = 'a=simulcast:send 0;1;2';
+    const ridLines = [
+      'a=rid:0 send',
+      'a=rid:1 send',
+      'a=rid:2 send'
+    ];
+    
+    // Insert after video m-line
+    lines.splice(videoMLineIndex + 1, 0, simulcastLine, ...ridLines);
+    
+    return lines.join('\r\n');
+  },
+
+  // Get recommended settings based on device
+  getRecommendedSettings() {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    if (isIOS) {
+      return {
+        profile: 'high',
+        codec: 'H264',
+        hardwareAcceleration: true,
+        simulcast: false
+      };
+    } else if (isAndroid) {
+      return {
+        profile: 'medium',
+        codec: 'VP8',
+        hardwareAcceleration: true,
+        simulcast: false
+      };
+    } else {
+      return {
+        profile: 'high',
+        codec: 'VP9',
+        hardwareAcceleration: true,
+        simulcast: true
+      };
+    }
   }
 };
 

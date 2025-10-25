@@ -1,435 +1,249 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#3b82f6" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Admin Panel" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="msapplication-TileColor" content="#3b82f6" />
-  <meta name="msapplication-tap-highlight" content="no" />
-  <title>Admin Panel • Canlı Destek</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👨‍💼</text></svg>" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="/admin/css/admin-main.css" />
-  <link rel="stylesheet" href="/admin/css/admin-components.css" />
-  <link rel="stylesheet" href="/admin/css/admin-modals.css" />
-  <link rel="stylesheet" href="/admin/css/admin-mobile.css" />
-
-  <!-- Scripts -->
-  <script src="/static/webrtc-config.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel • Canlı Destek</title>
+    <link rel="stylesheet" href="css/admin-main.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Admin Panel">
+    <meta name="msapplication-TileColor" content="#1e40af">
 </head>
 <body>
-  <!-- OTP Screen -->
-  <div id="otpScreen" class="otp-screen">
-    <div class="otp-box">
-      <div class="logo">👨‍💼</div>
-      <h1>Admin Girişi</h1>
-      <p class="subtitle">Güvenli erişim için OTP kodu alın</p>
-
-      <button id="requestOtpBtn" class="otp-btn">📱 OTP Kod İste</button>
-
-      <div id="otpInputSection" class="otp-input-section hidden">
-        <input type="text" id="otpInput" placeholder="6 haneli kod" maxlength="6" />
-        <div id="otpError" class="error-text hidden"></div>
-        <button id="verifyOtpBtn" class="otp-btn" style="margin-top: 16px;">🔐 Giriş Yap</button>
-      </div>
+    <!-- 🔐 OTP Authentication Screen -->
+    <div id="otpScreen" class="auth-screen">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <div class="auth-logo">👨‍💼</div>
+                    <h1 class="auth-title">Admin Girişi</h1>
+                    <p class="auth-subtitle">Güvenli erişim için OTP kodu alın</p>
+                </div>
+                
+                <div class="auth-content">
+                    <div id="requestOtpSection" class="auth-section">
+                        <button id="requestOtpBtn" class="btn btn-primary btn-large">
+                            <span class="btn-icon">📱</span>
+                            <span class="btn-text">OTP Kod İste</span>
+                        </button>
+                    </div>
+                    
+                    <div id="otpInputSection" class="auth-section hidden">
+                        <div class="input-group">
+                            <input type="text" id="otpInput" placeholder="6 haneli kod" maxlength="6" class="input-field">
+                            <div id="otpError" class="error-message hidden"></div>
+                        </div>
+                        <button id="verifyOtpBtn" class="btn btn-success btn-large">
+                            <span class="btn-icon">🔐</span>
+                            <span class="btn-text">Giriş Yap</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Dashboard Screen -->
-  <div id="dashboardScreen" class="dashboard-screen hidden">
-    <div class="admin-layout">
-      <!-- Header -->
-      <header class="hdr">
-        <div class="hdr__row">
-          <div class="brand">
-            <span class="pulse"></span>
-            <span>Admin Panel</span>
-          </div>
-          <div class="status">
-            <span class="status-dot"></span>
-            <span>Çevrimiçi</span>
-          </div>
+    <!-- 📊 Main Dashboard -->
+    <div id="dashboard" class="dashboard hidden">
+        
+        <!-- 🎯 Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="brand">
+                        <div class="brand-icon">👨‍💼</div>
+                        <div class="brand-text">Admin Panel</div>
+                    </div>
+                    <div class="status-indicator">
+                        <div class="status-dot online"></div>
+                        <span class="status-text">Çevrimiçi</span>
+                    </div>
+                </div>
+                
+                <div class="header-right">
+                    <button class="btn btn-outline" onclick="window.adminPanel.logout()">
+                        <span class="btn-icon">🚪</span>
+                        <span class="btn-text">Çıkış</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 📱 Main Content -->
+        <main class="main-content">
+            
+            <!-- 📊 Stats Cards -->
+            <section class="stats-section">
+                <div class="stats-grid">
+                    <div class="stat-card stat-card-primary">
+                        <div class="stat-icon">📞</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="lblActive">0</div>
+                            <div class="stat-label">Aktif Çağrılar</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card stat-card-secondary">
+                        <div class="stat-icon">⏳</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="lblQueue">0</div>
+                            <div class="stat-label">Kuyruk</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card stat-card-success">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="todayCalls">0</div>
+                            <div class="stat-label">Bugün</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card stat-card-info">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="weekCalls">0</div>
+                            <div class="stat-label">Bu Hafta</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 🎛️ Control Panel -->
+            <section class="control-section">
+                <div class="control-card">
+                    <div class="card-header">
+                        <h3 class="card-title">🎛️ Kontrol Paneli</h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="control-grid">
+                            <div class="control-item">
+                                <label class="control-label">Otomatik Kabul</label>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="autoAcceptToggle">
+                                    <span class="toggle-slider"></span>
+                                </div>
+                            </div>
+                            
+                            <div class="control-buttons">
+                                <button class="btn btn-danger btn-small" onclick="window.adminPanel.clearActiveCalls()">
+                                    <span class="btn-icon">🗑️</span>
+                                    <span class="btn-text">Temizle</span>
+                                </button>
+                                
+                                <button class="btn btn-info btn-small" onclick="window.adminPanel.refreshData()">
+                                    <span class="btn-icon">🔄</span>
+                                    <span class="btn-text">Yenile</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 📞 Active Calls -->
+            <section class="calls-section">
+                <div class="calls-card">
+                    <div class="card-header">
+                        <h3 class="card-title">📞 Aktif Görüşmeler</h3>
+                        <div class="live-indicator">
+                            <div class="live-dot"></div>
+                            <span class="live-text">Canlı</span>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div id="activeCallsList" class="calls-list">
+                            <div class="empty-state">
+                                <div class="empty-icon">📞</div>
+                                <div class="empty-text">Aktif çağrı yok</div>
+                                <div class="empty-subtext">Müşteri aradığında burada görünecek</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 📊 Performance Metrics -->
+            <section class="metrics-section">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="card-header">
+                            <h4 class="card-title">⚡ Performans</h4>
+                            <div class="status-badge status-good">İyi</div>
+                        </div>
+                        <div class="card-content">
+                            <div class="metric-item">
+                                <div class="metric-label">Paket Kaybı</div>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" id="perfLossBar"></div>
+                                </div>
+                                <div class="metric-value" id="perfLoss">0%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Gecikme</div>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" id="perfJitterBar"></div>
+                                </div>
+                                <div class="metric-value" id="perfJitter">0ms</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="card-header">
+                            <h4 class="card-title">🖥️ Sistem</h4>
+                            <div class="status-badge status-good">Sağlıklı</div>
+                        </div>
+                        <div class="card-content">
+                            <div class="metric-item">
+                                <div class="metric-label">CPU</div>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" id="perfCpuBar"></div>
+                                </div>
+                                <div class="metric-value" id="perfCpu">0%</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Bitrate</div>
+                                <div class="metric-bar">
+                                    <div class="metric-fill" id="perfBitrateBar"></div>
+                                </div>
+                                <div class="metric-value" id="perfBitrate">0kbps</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- 📞 Call Interface -->
+        <div id="callInterface" class="call-interface hidden">
+            <div class="call-header">
+                <div class="call-info">
+                    <div class="call-customer" id="callCustomer">Müşteri</div>
+                    <div class="call-status" id="callStatus">Bağlanıyor...</div>
+                </div>
+                <div class="call-timer" id="callTimer">00:00</div>
+            </div>
+            
+            <div class="call-video-container">
+                <video id="localVideo" autoplay muted></video>
+                <video id="remoteVideo" autoplay></video>
+            </div>
+            
+            <div class="call-controls">
+                <button id="fullVideoBtn" class="call-btn call-btn-video">📹</button>
+                <button id="fullMicBtn" class="call-btn call-btn-mic">🎤</button>
+                <button id="fullSpeakerBtn" class="call-btn call-btn-speaker">🔊</button>
+                <button id="fullEndBtn" class="call-btn call-btn-end">📞</button>
+            </div>
         </div>
 
-        <div class="hdr__row">
-          <div class="metrics">
-            <div class="metric">
-              <div class="metric__val" id="lblActive">0</div>
-              <div class="metric__lbl">Aktif</div>
-            </div>
-            <div class="metric">
-              <div class="metric__val" id="lblQueue">0</div>
-              <div class="metric__lbl">Kuyruk</div>
-            </div>
-          </div>
-
-          <div class="hdr__tools">
-            <button class="btn btn--small" onclick="window.adminPanel.logout()">🚪 Çıkış</button>
-          </div>
-        </div>
-      </header>
-
-      <!-- Main Content -->
-      <main class="main">
-        <!-- Performance Grid -->
-        <div class="perf-grid grid-4">
-          <div class="perf">
-            <div class="perf__lbl">Ses Kalitesi</div>
-            <div class="perf__val" id="perfLoss">0%</div>
-            <div class="progress">
-              <div class="progress__bar" style="width: 0%"></div>
-            </div>
-          </div>
-          <div class="perf">
-            <div class="perf__lbl">Gecikme</div>
-            <div class="perf__val" id="perfJitter">0ms</div>
-            <div class="progress">
-              <div class="progress__bar" style="width: 0%"></div>
-            </div>
-          </div>
-          <div class="perf">
-            <div class="perf__lbl">CPU Kullanımı</div>
-            <div class="perf__val">0%</div>
-            <div class="progress">
-              <div class="progress__bar" style="width: 0%"></div>
-            </div>
-          </div>
-          <div class="perf">
-            <div class="perf__lbl">Bellek</div>
-            <div class="perf__val">0MB</div>
-            <div class="progress">
-              <div class="progress__bar" style="width: 0%"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- KPI Grid -->
-        <div class="kpi-grid grid-3">
-          <div class="kpi">
-            <div class="kpi__val" id="kActive">0</div>
-            <div class="kpi__trend">Aktif Görüşme</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi__val" id="kQueue">0</div>
-            <div class="kpi__trend">Kuyruk</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi__val" id="kToday">0</div>
-            <div class="kpi__trend">Bugün</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi__val" id="kWeek">0</div>
-            <div class="kpi__trend">Bu Hafta</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi__val" id="kMonth">0</div>
-            <div class="kpi__trend">Bu Ay</div>
-          </div>
-          <div class="kpi">
-            <div class="kpi__val" id="kYear">0</div>
-            <div class="kpi__trend">Bu Yıl</div>
-          </div>
-        </div>
-
-        <!-- Active Calls Section -->
-        <section class="sec">
-          <div class="sec__hdr">
-            <h2 class="sec__ttl">📞 Aktif Görüşmeler</h2>
-            <div>
-              <button class="btn btn--small" onclick="window.adminPanel.clearActiveCalls()">🗑️ Temizle</button>
-            </div>
-          </div>
-          <div id="activeList" class="list">
-            <div class="empty">Henüz aktif görüşme yok</div>
-          </div>
-        </section>
-
-        <!-- Queue Section -->
-        <section class="sec">
-          <div class="sec__hdr">
-            <h2 class="sec__ttl">⏳ Bekleyen Kuyruk</h2>
-            <div>
-              <label class="toggle-row">
-                <span>Oto Kabul</span>
-                <div class="toggle" id="autoAcceptToggle" onclick="this.classList.toggle('on')">
-                  <div></div>
-                </div>
-              </label>
-            </div>
-          </div>
-          <div id="queueList" class="list">
-            <div class="empty">Kuyruk boş</div>
-          </div>
-        </section>
-
-        <!-- History Section -->
-        <section class="sec">
-          <div class="sec__hdr">
-            <h2 class="sec__ttl">📊 Geçmiş Kayıtlar</h2>
-            <div>
-              <button class="btn btn--small" onclick="window.adminPanel.clearHistory()">🗑️ Temizle</button>
-            </div>
-          </div>
-          <div id="historyContainer" class="list history-container">
-            <div class="empty">Henüz görüşme kaydı yok</div>
-          </div>
-        </section>
-
-        <!-- Audio Settings Section -->
-        <section class="sec">
-          <div class="sec__hdr">
-            <h2 class="sec__ttl">🎵 Ses Ayarları</h2>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-            <div>
-              <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Mikrofon</h3>
-              <div class="slider-row">
-                <label>Ses Seviyesi</label>
-                <input type="range" id="micVolume" min="0" max="100" value="75" />
-                <span id="micVolumeVal">75%</span>
-              </div>
-              <div class="toggle-row">
-                <label>Gürültü Engelleme</label>
-                <div class="toggle on" id="toggleNoiseSuppression">
-                  <div></div>
-                </div>
-              </div>
-              <div class="toggle-row">
-                <label>Yankı Engelleme</label>
-                <div class="toggle on" id="toggleEchoCancellation">
-                  <div></div>
-                </div>
-              </div>
-              <div class="toggle-row">
-                <label>Otomatik Kazanç</label>
-                <div class="toggle on" id="toggleAutoGain">
-                  <div></div>
-                </div>
-              </div>
-              <div class="slider-row">
-                <label>Cihaz</label>
-                <select id="micDevice">
-                  <option>Yükleniyor...</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Hoparlör</h3>
-              <div class="slider-row">
-                <label>Ses Seviyesi</label>
-                <input type="range" id="speakerVolume" min="0" max="100" value="75" />
-                <span id="speakerVolumeVal">75%</span>
-              </div>
-              <div class="slider-row">
-                <label>Cihaz</label>
-                <select id="speakerDevice">
-                  <option>Yükleniyor...</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Codec Settings Section -->
-        <section class="sec">
-          <div class="sec__hdr">
-            <h2 class="sec__ttl">⚙️ Codec Ayarları</h2>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-            <div>
-              <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Mod</h3>
-              <div class="codec-mode">
-                <button class="active" id="codecAuto">Otomatik</button>
-                <button id="codecManual">Manuel</button>
-              </div>
-            </div>
-            <div>
-              <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">Bitrate</h3>
-              <div class="slider-row">
-                <label>Bitrate</label>
-                <input type="range" id="codecBitrate" min="8" max="128" value="64" step="8" />
-                <span id="codecBitrateVal">64kb/s</span>
-              </div>
-              <div class="toggle-row">
-                <label>DTX (Discontinuous Transmission)</label>
-                <div class="toggle on" id="toggleDTX">
-                  <div></div>
-                </div>
-              </div>
-              <div class="toggle-row">
-                <label>FEC (Forward Error Correction)</label>
-                <div class="toggle on" id="toggleFEC">
-                  <div></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
-  </div>
-
-  <!-- Incoming Call Modal -->
-  <div id="incomingCallModal" class="incoming-call-modal hidden">
-    <div class="incoming-call-box">
-      <div class="incoming-call-icon">📞</div>
-      <h2>Gelen Arama</h2>
-      <p id="incomingCallerName" class="incoming-call-subtitle">Müşteri arıyor...</p>
-      <div class="incoming-call-buttons">
-        <button class="incoming-btn incoming-btn-accept" onclick="window.adminPanel.acceptCall(window.incomingCallId)">
-          <span style="font-size: 20px;">✓</span>
-          <span>Kabul Et</span>
-        </button>
-        <button class="incoming-btn incoming-btn-hold" onclick="window.adminPanel.holdCall(window.incomingCallId)">
-          <span style="font-size: 20px;">⏸️</span>
-          <span>Beklet</span>
-        </button>
-        <button class="incoming-btn incoming-btn-reject" onclick="document.getElementById('incomingCallModal').classList.add('hidden')">
-          <span style="font-size: 20px;">✕</span>
-          <span>Reddet</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Full Call Screen -->
-  <div id="fullCallScreen" class="full-call-screen hidden">
-    <div class="full-call-header">
-      <a href="#" class="back-btn" onclick="window.adminPanel.ui.showDashboard(); window.adminPanel.webrtc?.cleanup();">
-        ← Geri
-      </a>
-      <div class="full-call-status">
-        <span class="status-dot"></span>
-        <span>Bağlandı</span>
-      </div>
-      <div class="full-call-timer" id="fullTimer">00:00</div>
     </div>
 
-    <div class="full-video-container">
-      <button id="fullscreenBtn" class="fullscreen-btn" title="Tam Ekran">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-        </svg>
-      </button>
-      <video id="fullRemoteVideo" autoplay playsinline></video>
-      <div id="fullPipCamera" class="full-pip-camera">
-        <video id="fullLocalVideo" autoplay playsinline muted></video>
-      </div>
-      <div id="fullLoadingOverlay" class="loading-overlay">
-        <div class="spinner"></div>
-        <p class="loading-text">Bağlanıyor...</p>
-      </div>
-    </div>
-
-    <div class="controls">
-      <button class="control-btn btn-mic" id="fullMicBtn" data-label="Mikrofon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-        </svg>
-      </button>
-      <button class="control-btn btn-video" id="fullVideoBtn" data-label="Kamera">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-        </svg>
-      </button>
-      <button class="control-btn btn-speaker" id="fullSpeakerBtn" data-label="Hoparlör">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
-          <path d="M3 9v6h4l5 5V4L7 9H3z"/>
-          <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-        </svg>
-      </button>
-      <button class="control-btn btn-end" id="fullEndBtn" data-label="Kapat">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.68-1.36-2.66-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
-        </svg>
-      </button>
-    </div>
-
-    <audio id="fullRemoteAudio" autoplay></audio>
-  </div>
-
-  <!-- Scripts -->
-  <script src="/static/common-utils.js"></script>
-  <script src="/admin/js/ui-manager.js"></script>
-  <script src="/admin/js/webrtc-manager.js"></script>
-  <script src="/admin/js/admin-main.js"></script>
-
-  <script>
-
-    // Full call screen event listeners
-    document.addEventListener('DOMContentLoaded', () => {
-      // Full call controls
-      $('#fullMicBtn')?.addEventListener('click', () => {
-        const enabled = window.adminPanel.webrtc?.toggleMic();
-        $('#fullMicBtn').classList.toggle('off', !enabled);
-      });
-
-      $('#fullVideoBtn')?.addEventListener('click', () => {
-        const enabled = window.adminPanel.webrtc?.toggleVideo();
-        $('#fullVideoBtn').classList.toggle('off', !enabled);
-      });
-
-      $('#fullSpeakerBtn')?.addEventListener('click', () => {
-        const enabled = window.adminPanel.webrtc?.toggleSpeaker();
-        $('#fullSpeakerBtn').classList.toggle('off', !enabled);
-      });
-
-      $('#fullEndBtn')?.addEventListener('click', () => {
-        window.adminPanel.closeCall(window.adminPanel.webrtc?.currentCallId);
-      });
-
-      $('#fullscreenBtn')?.addEventListener('click', () => {
-        window.adminPanel.webrtc?.toggleFullscreen();
-      });
-
-      // PIP drag functionality
-      const pip = $('#fullPipCamera');
-      if (pip) {
-        let dragging = false, offsetX = 0, offsetY = 0;
-
-        pip.addEventListener('mousedown', (e) => {
-          dragging = true;
-          const rect = pip.getBoundingClientRect();
-          offsetX = e.clientX - rect.left;
-          offsetY = e.clientY - rect.top;
-          e.stopPropagation();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-          if (!dragging) return;
-          const containerRect = document.querySelector('.full-video-container').getBoundingClientRect();
-          let left = e.clientX - containerRect.left - offsetX;
-          let top = e.clientY - containerRect.top - offsetY;
-          left = Math.max(0, Math.min(left, containerRect.width - pip.offsetWidth));
-          top = Math.max(0, Math.min(top, containerRect.height - pip.offsetHeight));
-          pip.style.left = left + 'px';
-          pip.style.top = top + 'px';
-          pip.style.right = 'auto';
-        });
-
-        document.addEventListener('mouseup', () => dragging = false);
-      }
-    });
-  </script>
-  
-  <script>
-    // Admin Panel JavaScript - Use existing AdminPanel from admin-main.js
-    // Initialize admin panel after DOM is loaded
-    document.addEventListener('DOMContentLoaded', () => {
-      if (window.adminPanel) {
-        console.log('AdminPanel already initialized');
-      } else {
-        console.log('Initializing AdminPanel...');
-        window.adminPanel = new AdminPanel();
-      }
-    });
-  </script>
+    <!-- Scripts -->
+    <script src="/static/common-utils.js"></script>
+    <script src="js/admin-main.js"></script>
 </body>
 </html>
