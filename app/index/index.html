@@ -906,56 +906,8 @@
       });
     }
 
-    // PWA Install Prompt
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      console.log('[PWA] Install prompt triggered');
-      e.preventDefault();
-      deferredPrompt = e;
-      
-      // Show install button
-      const installBtn = document.createElement('button');
-      installBtn.textContent = '📱 Uygulamayı Yükle';
-      installBtn.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--primary);
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 25px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        z-index: 1000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        animation: slideUp 0.3s ease-out;
-      `;
-      
-      installBtn.addEventListener('click', () => {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === 'accepted') {
-            console.log('[PWA] User accepted install');
-          } else {
-            console.log('[PWA] User dismissed install');
-          }
-          deferredPrompt = null;
-          installBtn.remove();
-        });
-      });
-      
-      document.body.appendChild(installBtn);
-      
-      // Auto-hide after 10 seconds
-      setTimeout(() => {
-        if (installBtn.parentNode) {
-          installBtn.remove();
-        }
-      }, 10000);
-    });
+    // PWA Install Prompt kaldırıldı (istek üzerine)
+    // Önceden burada 'Uygulamayı Yükle' butonu oluşturuluyordu.
 
     // Mobile-specific optimizations
     if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
