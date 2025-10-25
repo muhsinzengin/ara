@@ -1,0 +1,627 @@
+/* Admin Mobile Optimization - %100 Mobil Uyum */
+
+/* Base Mobile Fixes */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+    overflow-x: hidden;
+  }
+
+  /* Header Mobile */
+  .hdr {
+    padding: 12px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hdr__row {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .brand {
+    font-size: 16px;
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+    width: 100%;
+  }
+
+  .metric {
+    background: var(--bg-card);
+    padding: 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  .metric__val {
+    font-size: 20px;
+  }
+
+  .metric__lbl {
+    font-size: 11px;
+  }
+
+  /* Main Content Mobile */
+  .main {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  /* Performance Grid - 2 Columns */
+  .perf-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .perf {
+    padding: 12px;
+  }
+
+  .perf__lbl {
+    font-size: 12px;
+  }
+
+  .perf__val {
+    font-size: 20px;
+  }
+
+  /* KPI Grid - 3 Columns */
+  .kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .kpi {
+    padding: 12px 8px;
+  }
+
+  .kpi__val {
+    font-size: 24px;
+  }
+
+  .kpi__trend {
+    font-size: 10px;
+  }
+
+  /* Sections Mobile */
+  .sec {
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+  }
+
+  .sec__hdr {
+    padding: 14px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .sec__ttl {
+    font-size: 16px;
+  }
+
+  /* Calls Mobile */
+  .call {
+    padding: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .call__info {
+    width: 100%;
+  }
+
+  .call__name {
+    font-size: 15px;
+  }
+
+  .call__actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .call__actions .btn {
+    flex: 1;
+    min-width: 100px;
+    justify-content: center;
+  }
+
+  /* Queue Mobile */
+  .queue-item {
+    padding: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .queue-item__num {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+
+  .queue-item__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  /* History Mobile */
+  .history-item {
+    padding: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .history-item__stats {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Buttons Mobile */
+  .btn {
+    padding: 10px 14px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  .btn--small {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+
+  /* Audio Settings Mobile */
+  .slider-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .slider-row label {
+    min-width: auto;
+    font-size: 13px;
+  }
+
+  .toggle-row {
+    padding: 12px 0;
+  }
+
+  .toggle-row label {
+    font-size: 13px;
+  }
+
+  /* Codec Settings Mobile */
+  .codec-mode {
+    flex-direction: column;
+  }
+
+  .codec-mode button {
+    width: 100%;
+  }
+
+  /* Incoming Call Modal Mobile */
+  .incoming-call-box {
+    padding: 24px 16px;
+    max-width: 90vw;
+  }
+
+  .incoming-call-icon {
+    font-size: 48px;
+  }
+
+  .incoming-call-box h2 {
+    font-size: 20px;
+  }
+
+  .incoming-call-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .incoming-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+  }
+
+  /* Full Call Screen Mobile */
+  .full-call-header {
+    padding: 10px 12px;
+  }
+
+  .back-btn {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .full-call-timer {
+    font-size: 14px;
+  }
+
+  .full-pip-camera {
+    width: 100px;
+    height: 75px;
+    bottom: 100px;
+    right: 12px;
+  }
+
+  .controls {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .control-btn {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .control-btn::after {
+    font-size: 10px;
+    bottom: -16px;
+  }
+
+  .btn-end {
+    width: 56px !important;
+    height: 56px !important;
+  }
+
+  /* Toast Mobile */
+  .toast-container {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+  }
+
+  .toast {
+    min-width: auto;
+    max-width: none;
+    width: 100%;
+  }
+}
+
+/* Extra Small Mobile (< 480px) */
+@media (max-width: 480px) {
+  /* Header Extra Small */
+  .hdr {
+    padding: 10px;
+  }
+
+  .brand {
+    font-size: 15px;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .metric {
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .metric__val {
+    font-size: 18px;
+  }
+
+  /* Main Extra Small */
+  .main {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  /* Performance Grid - 2 Columns Tight */
+  .perf-grid {
+    gap: 8px;
+  }
+
+  .perf {
+    padding: 10px;
+  }
+
+  .perf__lbl {
+    font-size: 11px;
+  }
+
+  .perf__val {
+    font-size: 18px;
+  }
+
+  /* KPI Grid - 2 Columns */
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .kpi {
+    padding: 10px 6px;
+  }
+
+  .kpi__val {
+    font-size: 20px;
+  }
+
+  .kpi__trend {
+    font-size: 9px;
+  }
+
+  /* Sections Extra Small */
+  .sec__hdr {
+    padding: 12px 10px;
+  }
+
+  .sec__ttl {
+    font-size: 15px;
+  }
+
+  /* Calls Extra Small */
+  .call {
+    padding: 10px;
+  }
+
+  .call__name {
+    font-size: 14px;
+  }
+
+  .call__status,
+  .call__time {
+    font-size: 11px;
+  }
+
+  .call__actions .btn {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  /* Queue Extra Small */
+  .queue-item {
+    padding: 10px;
+  }
+
+  .queue-item__num {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .queue-item__name {
+    font-size: 14px;
+  }
+
+  .queue-item__time {
+    font-size: 11px;
+  }
+
+  /* History Extra Small */
+  .history-item {
+    padding: 10px;
+  }
+
+  .history-item__name {
+    font-size: 14px;
+  }
+
+  .history-item__time,
+  .history-item__duration {
+    font-size: 12px;
+  }
+
+  .history-item__status {
+    font-size: 10px;
+  }
+
+  /* Buttons Extra Small */
+  .btn {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .btn--small {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  /* Controls Extra Small */
+  .controls {
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .control-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 18px;
+    margin-bottom: 14px;
+  }
+
+  .control-btn::after {
+    font-size: 9px;
+    bottom: -14px;
+  }
+
+  .btn-end {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  /* Incoming Call Extra Small */
+  .incoming-call-box {
+    padding: 20px 12px;
+  }
+
+  .incoming-call-icon {
+    font-size: 40px;
+  }
+
+  .incoming-call-box h2 {
+    font-size: 18px;
+  }
+
+  .incoming-btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+}
+
+/* Landscape Mobile Optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+  .hdr {
+    padding: 8px 12px;
+  }
+
+  .metrics {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .metric {
+    padding: 8px;
+  }
+
+  .metric__val {
+    font-size: 16px;
+  }
+
+  .metric__lbl {
+    font-size: 10px;
+  }
+
+  .main {
+    padding: 10px;
+  }
+
+  .perf-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .full-pip-camera {
+    width: 80px;
+    height: 60px;
+    bottom: 80px;
+  }
+
+  .controls {
+    padding: 8px;
+  }
+
+  .control-btn {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+  }
+
+  .btn-end {
+    width: 48px !important;
+    height: 48px !important;
+  }
+}
+
+/* Touch Improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Increase touch targets */
+  button,
+  .btn,
+  .toggle,
+  .control-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Remove hover effects on touch devices */
+  .btn:hover,
+  .control-btn:hover,
+  .call:hover {
+    transform: none;
+  }
+
+  /* Add active states for touch feedback */
+  .btn:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+
+  .control-btn:active {
+    transform: scale(0.9);
+  }
+
+  /* Improve scrolling */
+  .history-container,
+  .modal__body {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Safe Area Insets (iPhone X+) */
+@supports (padding: max(0px)) {
+  .hdr {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+
+  .main {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .controls {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+
+  .toast-container {
+    top: max(10px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
+    left: max(10px, env(safe-area-inset-left));
+  }
+}
+
+/* Prevent Text Selection on Mobile */
+@media (max-width: 768px) {
+  .metric__val,
+  .kpi__val,
+  .perf__val,
+  .control-btn,
+  .btn {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* Fix Input Zoom on iOS */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Optimize Animations for Mobile */
+@media (max-width: 768px) {
+  * {
+    animation-duration: 0.2s !important;
+    transition-duration: 0.2s !important;
+  }
+
+  .modal__content {
+    animation-duration: 0.3s !important;
+  }
+}
