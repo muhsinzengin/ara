@@ -1,315 +1,263 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#4CAF50" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Canlı Destek" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="msapplication-TileColor" content="#4CAF50" />
-  <meta name="msapplication-tap-highlight" content="no" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📞</text></svg>" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='%234CAF50' rx='32'/><text x='90' y='110' font-size='100' text-anchor='middle' fill='white'>📞</text></svg>" />
-  <link rel="manifest" href="/static/manifest.json" />
-  <script src="/static/webrtc-helpers.js"></script>
-  <title>Canlı Destek • Görüntülü Görüşme</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canlı Destek</title>
   <style>
-    :root{--bg:#0a0e1a; --card:#0f1629; --elev:#1a1f35; --text:#e5e7eb; --muted:#64748b; --border:#1e293b; --primary:#4CAF50; --primary-dark:#388E3C; --success:#10b981; --danger:#ef4444; --warn:#f59e0b; --gradient:linear-gradient(135deg,#4CAF50 0%,#8BC34A 100%)}
-    *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
-    body{font-family:Inter, system-ui, sans-serif; background:var(--gradient); color:var(--text); overflow-x:hidden; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px}
-    .hidden{display:none !important}
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      overflow: hidden;
+    }
     
-    /* Welcome */
-    .welcome-screen{width:100%; max-width:400px}
-    .welcome-box{background:white; border-radius:24px; padding:40px 30px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,.2); border-top:4px solid var(--primary)}
-    .logo{font-size:80px; margin-bottom:10px; color:var(--primary)}
-    h1{color:#2e7d32; font-size:28px; margin:20px 0 10px}
-    .subtitle{color:#666; font-size:14px; margin-bottom:30px}
-    .input-group{margin:20px 0}
-    .input-group input{width:100%; padding:15px; border:2px solid #e0e0e0; border-radius:12px; font-size:16px; transition:all .3s}
-    .input-group input:focus{outline:none; border-color:var(--primary); box-shadow:0 0 0 4px rgba(76,175,80,.1)}
-    .start-btn{width:100%; padding:16px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:white; border:none; border-radius:12px; font-size:18px; font-weight:700; cursor:pointer; transition:transform .2s}
-    .start-btn:disabled{opacity:.5; cursor:not-allowed}
-    .start-btn:not(:disabled):active{transform:scale(.98)}
-
-    /* Mobile Responsive */
+    .container { 
+      display: flex; 
+      flex-direction: column; 
+      height: 100vh; 
+      position: relative;
+    }
+    
+    .header {
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 15px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+    
+    .header h1 { font-size: 24px; margin-bottom: 5px; }
+    .header p { opacity: 0.8; font-size: 14px; }
+    
+    .video-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .video-container video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .local-video {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 200px;
+      height: 150px;
+      border-radius: 10px;
+      border: 3px solid #4CAF50;
+      z-index: 10;
+    }
+    
+    .remote-video {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .controls {
+      background: rgba(0,0,0,0.9);
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .control-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: none;
+      background: #333;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    
+    .control-btn:hover { background: #555; transform: scale(1.1); }
+    .control-btn.off { background: #f44336; }
+    .control-btn.active { background: #4CAF50; }
+    
+    .welcome-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      color: white;
+      text-align: center;
+    }
+    
+    .welcome-screen h2 { font-size: 32px; margin-bottom: 20px; }
+    .welcome-screen p { font-size: 18px; margin-bottom: 30px; opacity: 0.8; }
+    
+    .name-input {
+      padding: 15px 20px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      width: 300px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+    
+    .name-input::placeholder { color: rgba(255,255,255,0.5); }
+    
+    .start-btn {
+      margin-top: 20px;
+      padding: 15px 40px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .start-btn:hover { background: #45a049; transform: scale(1.05); }
+    .start-btn:disabled { background: #666; cursor: not-allowed; transform: none; }
+    
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      color: white;
+    }
+    
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #333;
+      border-top: 5px solid #4CAF50;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .status-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 18px;
+      z-index: 50;
+    }
+    
+    .timer {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 20px;
+      font-size: 16px;
+      z-index: 50;
+    }
+    
+    .hidden { display: none !important; }
+    
     @media (max-width: 768px) {
-      body{padding:10px}
-      .welcome-screen{max-width:100%}
-      .welcome-box{padding:30px 20px; border-radius:20px}
-      .logo{font-size:60px}
-      h1{font-size:24px; margin:15px 0 8px}
-      .subtitle{font-size:13px; margin-bottom:25px}
-      .input-group input{padding:18px; font-size:16px; border-radius:10px}
-      .start-btn{padding:18px; font-size:16px; border-radius:10px}
-    }
-
-    @media (max-width: 480px) {
-      body{padding:5px}
-      .welcome-box{padding:25px 15px; border-radius:16px}
-      .logo{font-size:50px}
-      h1{font-size:20px}
-      .subtitle{font-size:12px}
-      .input-group input{padding:16px; font-size:16px}
-      .start-btn{padding:16px; font-size:16px}
-    }
-
-    /* Call Screen */
-    .call-screen{position:fixed; inset:0; background:#000; display:flex; flex-direction:column}
-    .call-header{display:flex; align-items:center; justify-content:space-between; padding:16px 20px; padding-left:calc(20px + env(safe-area-inset-left)); padding-right:calc(20px + env(safe-area-inset-right)); background:rgba(0,0,0,.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); z-index:100}
-    .status{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600}
-    .status-dot{width:8px; height:8px; border-radius:50%; background:var(--primary); animation:pulse 2s infinite}
-    @keyframes pulse{0%,100%{opacity:1} 50%{opacity:.5}}
-    .admin-label{position:absolute; left:50%; transform:translateX(-50%); font-size:16px; font-weight:800; color:var(--primary); letter-spacing:2px}
-    .timer{font-size:14px; color:rgba(255,255,255,.8); font-variant-numeric:tabular-nums}
-
-    /* Call Screen Mobile */
-    @media (max-width: 768px) {
-      .call-header{padding:12px 16px}
-      .status{font-size:13px; gap:6px}
-      .admin-label{font-size:14px; letter-spacing:1px}
-      .timer{font-size:13px}
-    }
-
-    @media (max-width: 480px) {
-      .call-header{padding:10px 12px}
-      .status{font-size:12px; gap:4px}
-      .admin-label{font-size:12px}
-      .timer{font-size:12px}
-    }
-
-    /* Video */
-    .video-container{flex:1; position:relative; background:#1a1a1a; overflow:hidden; touch-action:pan-x pan-y}
-    .fullscreen-btn{position:absolute; top:5px; left:5px; width:44px; height:44px; background:rgba(0,0,0,.7); border:none; border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:60; transition:all .3s; backdrop-filter:blur(10px)}
-    .fullscreen-btn:hover{background:rgba(0,0,0,.9); transform:scale(1.1)}
-    .fullscreen-btn:active{transform:scale(.95)}
-    .fullscreen-btn.active svg{transform:rotate(180deg)}
-    #remoteVideo{width:100%; height:100%; object-fit:cover; background:#000}
-    .video-pip{position:absolute; bottom:20px; right:20px; width:120px; height:170px; border-radius:12px; overflow:hidden; border:2px solid var(--primary); box-shadow:0 8px 24px rgba(0,0,0,.5); z-index:50; cursor:grab; touch-action:none; user-select:none}
-    .video-pip:active{cursor:grabbing}
-    .video-pip:hover{box-shadow:0 12px 32px rgba(0,0,0,.7)}
-    .video-pip video{width:100%; height:100%; object-fit:cover}
-    .loading-overlay{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,.95); z-index:100}
-    .spinner{width:40px; height:40px; border:4px solid rgba(76,175,80,.3); border-top-color:var(--primary); border-radius:50%; animation:spin 1s linear infinite; margin-bottom:20px}
-
-    /* Video Mobile */
-    @media (max-width: 768px) {
-      .fullscreen-btn{width:40px; height:40px; top:8px; left:8px}
-      .video-pip{bottom:15px; right:15px; width:100px; height:140px}
-    }
-
-    @media (max-width: 480px) {
-      .fullscreen-btn{width:36px; height:36px; top:10px; left:10px}
-      .video-pip{bottom:10px; right:10px; width:80px; height:110px}
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .loading-text{color:white; font-size:16px}
-
-    /* Controls */
-    .controls{display:flex; justify-content:space-around; align-items:center; padding:16px 10px calc(12px + env(safe-area-inset-bottom)); background:linear-gradient(to top,rgba(0,0,0,.95),rgba(0,0,0,.7)); backdrop-filter:blur(20px); z-index:100}
-    .control-btn{position:relative; width:46px; height:46px; border-radius:50%; border:2px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer; transition:all .3s; margin-bottom:18px}
-    .control-btn:active{transform:scale(.95)}
-    .control-btn::after{content:attr(data-label); position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font-size:10px; font-weight:600; color:white; white-space:nowrap}
-    .btn-video{background:linear-gradient(135deg,#ff5722,#e64a19); box-shadow:0 4px 12px rgba(255,87,34,.4)}
-    .btn-video.off{background:linear-gradient(135deg,#757575,#616161)}
-    .btn-mic{background:linear-gradient(135deg,var(--primary),var(--primary-dark)); box-shadow:0 4px 12px rgba(76,175,80,.4)}
-    .btn-mic.off{background:linear-gradient(135deg,#f44336,#d32f2f)}
-    .btn-end{width:52px !important; height:52px !important; background:linear-gradient(135deg,#ff3b30,#d32f2f) !important; border-width:3px !important; box-shadow:0 4px 16px rgba(255,59,48,.5) !important}
-    .btn-speaker{background:linear-gradient(135deg,#2196F3,#1976D2); box-shadow:0 4px 12px rgba(33,150,243,.4)}
-    .btn-speaker.off{background:linear-gradient(135deg,#757575,#616161)}
-    .btn-proximity{background:linear-gradient(135deg,#FF9800,#F57C00); box-shadow:0 4px 12px rgba(255,152,0,.4)}
-    .btn-proximity.active{background:linear-gradient(135deg,#9C27B0,#7B1FA2)}
-
-    /* Controls Mobile */
-    @media (max-width: 768px) {
-      .controls{padding:12px 8px 10px; gap:8px}
-      .control-btn{width:42px; height:42px; font-size:20px; margin-bottom:16px}
-      .control-btn::after{font-size:9px; bottom:-16px}
-      .btn-end{width:48px !important; height:48px !important}
-    }
-
-    @media (max-width: 480px) {
-      .controls{padding:10px 6px 8px; gap:6px}
-      .control-btn{width:38px; height:38px; font-size:18px; margin-bottom:14px}
-      .control-btn::after{font-size:8px; bottom:-14px}
-      .btn-end{width:44px !important; height:44px !important}
-    }
-
-    /* Notifications */
-    .notification-container{position:fixed; top:20px; right:20px; z-index:10000; display:flex; flex-direction:column; gap:12px; pointer-events:none}
-    .notification{min-width:320px; max-width:420px; background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(255,255,255,.98)); backdrop-filter:blur(20px); border-radius:16px; padding:16px 20px; box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.08); border:1px solid rgba(255,255,255,.6); display:flex; align-items:flex-start; gap:14px; pointer-events:all; cursor:pointer; position:relative; overflow:hidden; transform:translateX(450px) scale(.9); opacity:0; animation:slideIn .5s cubic-bezier(.34,1.56,.64,1) forwards}
-    @keyframes slideIn{0%{transform:translateX(450px) scale(.9); opacity:0} 100%{transform:translateX(0) scale(1); opacity:1}}
-    .notification.removing{animation:slideOut .4s cubic-bezier(.55,.085,.68,.53) forwards}
-    @keyframes slideOut{0%{transform:translateX(0) scale(1); opacity:1} 100%{transform:translateX(450px) scale(.8); opacity:0}}
-
-    /* Notifications Mobile */
-    @media (max-width: 768px) {
-      .notification-container{top:15px; right:15px; left:15px}
-      .notification{min-width:auto; max-width:none; padding:14px 16px}
-    }
-
-    @media (max-width: 480px) {
-      .notification-container{top:10px; right:10px; left:10px}
-      .notification{padding:12px 14px; border-radius:12px}
-    }
-
-    /* Mobile Performance Optimizations */
-    @media (max-width: 768px) {
-      /* Hardware acceleration */
-      .call-screen, .video-container, .controls {
-        transform: translateZ(0);
-        -webkit-transform: translateZ(0);
-        will-change: transform;
-      }
-      
-      /* Reduce animations on mobile */
-      .control-btn {
-        transition: transform 0.1s ease;
-      }
-      
-      /* Optimize video rendering */
-      #remoteVideo, #localVideo {
-        transform: translateZ(0);
-        -webkit-transform: translateZ(0);
-      }
-      
-      /* Reduce shadow complexity */
-      .welcome-box {
-        box-shadow: 0 10px 30px rgba(0,0,0,.15);
-      }
-      
-      /* Optimize notifications */
-      .notification {
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-      }
-    }
-
-    /* Viewport height fixes */
-@supports (height: 100dvh) {
-  .call-screen { min-height: 100dvh; }
-}
-@supports not (height: 100dvh) {
-  .call-screen { min-height: calc(var(--vh, 1vh) * 100); }
-}
-/* iOS Safari specific fixes */
-    @supports (-webkit-touch-callout: none) {
-      .call-screen {
-        -webkit-overflow-scrolling: touch;
-      }
-      
-      .controls {
-        -webkit-transform: translateZ(0);
-        transform: translateZ(0);
-      }
-    }
-
-    /* Android Chrome optimizations */
-    @media screen and (-webkit-min-device-pixel-ratio: 0) {
-      .video-container {
-        -webkit-transform: translate3d(0,0,0);
-        transform: translate3d(0,0,0);
-      }
-    }
-    .notification::before{content:''; position:absolute; bottom:0; left:0; height:3px; background:linear-gradient(90deg,var(--notification-color),var(--notification-color-light)); width:100%; transform-origin:left; animation:progress 5s linear forwards}
-    @keyframes progress{from{transform:scaleX(1)} to{transform:scaleX(0)}}
-    .notification-icon{font-size:32px; line-height:1; flex-shrink:0; filter:drop-shadow(0 2px 4px rgba(0,0,0,.1)); animation:iconPop .6s cubic-bezier(.34,1.56,.64,1)}
-    @keyframes iconPop{0%{transform:scale(0) rotate(-180deg)} 50%{transform:scale(1.2) rotate(10deg)} 100%{transform:scale(1) rotate(0deg)}}
-    .notification-content{flex:1; min-width:0}
-    .notification-title{font-size:15px; font-weight:700; color:#1a1a1a; margin:0 0 4px; line-height:1.3}
-    .notification-message{font-size:13px; color:#666; margin:0; line-height:1.4}
-    .notification-close{position:absolute; top:12px; right:12px; width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,.05); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; color:#666; transition:all .2s; opacity:0}
-    .notification:hover .notification-close{opacity:1}
-    .notification-close:hover{background:rgba(0,0,0,.1); transform:scale(1.1)}
-    .notification.success{--notification-color:#4CAF50; --notification-color-light:#81C784; border-left:4px solid #4CAF50}
-    .notification.error{--notification-color:#f44336; --notification-color-light:#e57373; border-left:4px solid #f44336}
-    .notification.warning{--notification-color:#FF9800; --notification-color-light:#FFB74D; border-left:4px solid #FF9800}
-    .notification.info{--notification-color:#2196F3; --notification-color-light:#64B5F6; border-left:4px solid #2196F3}
-
-    @media screen and (max-width:480px){
-      .video-pip{width:100px; height:133px; bottom:15px; right:15px}
-      .control-btn{width:30px; height:30px; margin-bottom:14px; font-size:16px}
-      .control-btn::after{font-size:9px; bottom:-14px}
-      .btn-end{width:34px !important; height:34px !important}
-      .notification-container{top:10px; right:10px; left:10px}
-      .notification{min-width:auto; max-width:none; width:100%}
+      .local-video { width: 120px; height: 90px; top: 10px; right: 10px; }
+      .control-btn { width: 50px; height: 50px; font-size: 16px; }
+      .name-input { width: 250px; }
+      .welcome-screen h2 { font-size: 24px; }
+      .welcome-screen p { font-size: 16px; }
     }
   </style>
 </head>
 <body>
-  <div id="welcomeScreen" class="welcome-screen">
-    <div class="welcome-box">
-      <div class="logo">📞</div>
-      <h1>Canlı Destek</h1>
-      <p class="subtitle">Görüntülü veya sesli destek alın</p>
-      <div class="input-group">
-        <input type="text" id="nameInput" placeholder="Adınızı girin" maxlength="50"/>
-  </div>\r\n      <button id="startBtn" class="start-btn" disabled>Destek Ara</button>\r\n\r\n  <div id="callScreen" class="call-screen hidden">
-    <div class="call-header">
-      <div class="status">
-        <span class="status-dot"></span>
-        <span id="statusText">Bağlanıyor...</span>
-      </div>
-      <div class="admin-label">ADMİN</div>
-      <div class="timer" id="timer">00:00</div>
+  <div class="container">
+    <div class="header">
+      <h1>🎥 Canlı Destek</h1>
+      <p>Müşteri hizmetleri ile görüntülü konuşma</p>
     </div>
-
+    
     <div class="video-container">
-      <button id="fullscreenBtn" class="fullscreen-btn" title="Tam Ekran">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
-        </svg>
-      </button>
-      <video id="remoteVideo" autoplay playsinline></video>
-      <div id="pipCamera" class="video-pip">
-        <video id="localVideo" autoplay playsinline muted></video>
-      </div>
-      <div id="loadingOverlay" class="loading-overlay">
-        <div class="spinner"></div>
-        <p class="loading-text">Bağlantı kuruluyor...</p>
-      </div>
+      <video id="remoteVideo" class="remote-video" autoplay muted></video>
+      <video id="localVideo" class="local-video" autoplay muted></video>
+      
+      <div id="statusText" class="status-text">Bağlanıyor...</div>
+      <div id="timer" class="timer hidden">00:00</div>
     </div>
-
+    
     <div class="controls">
-      <button class="control-btn btn-mic" id="micBtn" data-label="Mikrofon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-        </svg>
-      </button>
-      <button class="control-btn btn-video" id="videoBtn" data-label="Kamera">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-        </svg>
-      </button>
-      <button class="control-btn btn-speaker" id="speakerBtn" data-label="Hoparlör">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
-          <path d="M3 9v6h4l5 5V4L7 9H3z"/>
-          <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
-        </svg>
-      </button>
-      <button class="control-btn btn-proximity" id="proximityBtn" data-label="Ahize Modu">
-        <span style="font-size:28px">👂</span>
-      </button>
-      <button class="control-btn btn-end" id="endBtn" data-label="Kapat">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-          <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.68-1.36-2.66-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
-        </svg>
-      </button>
+      <button id="micBtn" class="control-btn" data-label="Mikrofon">🎤</button>
+      <button id="videoBtn" class="control-btn" data-label="Kamera">📹</button>
+      <button id="speakerBtn" class="control-btn" data-label="Hoparlör">🔊</button>
+      <button id="proximityBtn" class="control-btn" data-label="Ahize Modu">📱</button>
+      <button id="fullscreenBtn" class="control-btn" data-label="Tam Ekran">⛶</button>
+      <button id="endBtn" class="control-btn" data-label="Kapat">📞</button>
     </div>
+  </div>
+
+  <div id="welcomeScreen" class="welcome-screen">
+    <h2>👋 Hoş Geldiniz!</h2>
+    <p>Destek ekibimizle görüntülü konuşma yapmak için adınızı girin</p>
+    <input id="nameInput" class="name-input" type="text" placeholder="Adınızı girin..." maxlength="50">
+    <button id="startBtn" class="start-btn" disabled>📞 Aramayı Başlat</button>
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-spinner"></div>
+    <div id="loadingText">Bağlanıyor...</div>
   </div>
 
   <audio id="remoteAudio" autoplay></audio>
 
+  <!-- Enhanced Quality Systems Scripts -->
   <script src="/static/webrtc-config.js"></script>
   <script src="/static/common-utils.js"></script>
-  <script>
-    // Use CommonUtils.$ function
+  <script src="/static/audio-processor.js"></script>
+  <script src="/static/video-quality-manager.js"></script>
+  <script src="/static/network-monitor.js"></script>
+  <script src="/static/mobile-optimizer.js"></script>
+  
+  <!-- Enhanced Quality Systems Styles -->
+  <link rel="stylesheet" href="/static/audio-level-styles.css">
+  <link rel="stylesheet" href="/static/video-quality-styles.css">
+  <link rel="stylesheet" href="/static/mobile-optimizer-styles.css">
 
-    // Customer Call
+  <script>
+    // Customer Call - Optimized and Clean
     class CustomerCall {
       constructor() {
         this.callId = null;
@@ -317,6 +265,8 @@
         this.localStream = null;
         this.customerName = '';
         this.callStartTime = null;
+        this.timerInterval = null;
+        this.proximityMode = false;
         this.init();
       }
 
@@ -333,7 +283,6 @@
           const value = e.target.value.trim();
           startBtn.disabled = value.length < 1;
           
-          // Visual feedback
           if (value.length >= 1) {
             startBtn.style.opacity = '1';
             startBtn.style.cursor = 'pointer';
@@ -343,7 +292,6 @@
           }
         };
         
-        // Enter key support
         nameInput.onkeypress = (e) => {
           if (e.key === 'Enter' && !startBtn.disabled) {
             this.startCall();
@@ -352,7 +300,7 @@
         
         startBtn.onclick = () => this.startCall();
         
-        // Other controls
+        // Control buttons
         const micBtn = CommonUtils.$('#micBtn');
         const videoBtn = CommonUtils.$('#videoBtn');
         const speakerBtn = CommonUtils.$('#speakerBtn');
@@ -366,731 +314,310 @@
         if (proximityBtn) proximityBtn.onclick = () => this.toggleProximity();
         if (fullscreenBtn) fullscreenBtn.onclick = () => this.toggleFullscreen();
         if (endBtn) endBtn.onclick = () => this.endCall();
-        
-        this.initDragging();
       }
 
       async startCall() {
         const nameInput = CommonUtils.$('#nameInput');
-        if (!nameInput) {
-          console.error('Name input not found');
-          return;
-        }
+        if (!nameInput) return;
         
         this.customerName = nameInput.value.trim();
-        if (this.customerName.length < 1) {
-          Notifications.error('Lütfen adınızı girin');
-          return;
-        }
+        if (!this.customerName) return;
 
-        // Default name if empty
-        if (!this.customerName) {
-          this.customerName = 'Misafir';
-        }
-
+        this.showLoading('Kamera ve mikrofon erişimi isteniyor...');
+        
         try {
-          console.log('[INDEX] Starting call for:', this.customerName);
-          const res = await fetch('/api/create-call', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({customer_name: this.customerName})
-          });
-          console.log('[INDEX] Response status:', res.status);
-          const data = await res.json();
-          console.log('[INDEX] Response data:', data);
-
-          if (data.success) {
-            this.callId = data.call_id;
-            console.log('[INDEX] Call ID:', this.callId);
-            await this.initWebRTC();
-            this.showCallScreen();
-            this.startHeartbeat();
-            Notifications.info('Admin bağlanıyor...');
-          } else {
-            console.error('[INDEX] Call creation failed:', data.error);
-            Notifications.error('Çağrı oluşturulamadı: ' + data.error);
-          }
-        } catch (err) {
-          console.error('[INDEX] Call start error:', err);
-          Notifications.retry('Bağlantı hatası', () => this.startCall());
-        }
-      }
-
-      startHeartbeat() {
-        // Her 30 saniyede bir ping gönder
-        this.heartbeatInterval = setInterval(async () => {
-          if (!this.callId) return;
-          
-          try {
-            await fetch('/api/heartbeat', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({callId: this.callId})
-            });
-          } catch (err) {
-            console.error('Heartbeat error:', err);
-          }
-        }, 30000);
-      }
-
-      async initWebRTC() {
-        try {
-          console.log('[INDEX WebRTC] Init for callId:', this.callId);
-          this.showLoading('Kamera ve mikrofon erişimi isteniyor...');
-          
-          // Check if getUserMedia is supported
-          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('WebRTC not supported in this browser');
-          }
-          
-          // Check if we're on HTTPS or localhost
-          const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-          if (!isSecure) {
-            console.warn('[INDEX WebRTC] Not secure context, but continuing for localhost testing');
-          }
-          
-          // Detect network quality (auto)
-          const quality = await WebRTCHelpers.detectNetworkQuality();
-          console.log('[INDEX WebRTC] Network quality:', quality);
-          
           // Get optimal constraints
-          const constraints = WebRTCHelpers.getOptimalConstraints(quality);
-          console.log('[INDEX WebRTC] Using constraints:', constraints);
-          
+          const constraints = await this.getOptimalConstraints();
           this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
-          console.log('[INDEX WebRTC] Media acquired:', {
-            audio: this.localStream.getAudioTracks().length,
-            video: this.localStream.getVideoTracks().length
-          });
 
           const localVideo = CommonUtils.$('#localVideo');
           if (localVideo) {
             localVideo.srcObject = this.localStream;
           }
-          this.hideLoading();
-
-          // Create peer connection with optimal config
-          const pcConfig = await WebRTCHelpers.getPeerConfig();
           
+          this.hideLoading();
+          this.showCallScreen();
+          await this.initWebRTC();
+          
+        } catch (err) {
+          this.hideLoading();
+          console.error('[CustomerCall] Media access error:', err);
+          CommonUtils.Notifications.error('Kamera/mikrofon erişimi reddedildi');
+        }
+      }
+
+      async getOptimalConstraints() {
+        let constraints = {
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,
+            channelCount: 1
+          },
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 }
+          }
+        };
+
+        // Apply mobile optimizations if available
+        if (window.mobileOptimizer) {
+          const mobileConstraints = window.mobileOptimizer.getOptimalConstraints();
+          constraints = { ...constraints, ...mobileConstraints };
+        }
+
+        return constraints;
+      }
+
+      async initWebRTC() {
+        try {
+          this.showLoading('Bağlantı kuruluyor...');
+          
+          const pcConfig = { 
+            iceServers: this.getIceServers(),
+            iceCandidatePoolSize: 10
+          };
           this.pc = new RTCPeerConnection(pcConfig);
 
           this.localStream.getTracks().forEach(track => {
-            console.log('[INDEX WebRTC] Adding track:', track.kind);
             this.pc.addTrack(track, this.localStream);
           });
 
           this.pc.ontrack = (event) => {
-            console.log('[INDEX WebRTC] Track received:', event.track.kind);
             const stream = event.streams[0];
             if (event.track.kind === 'video') {
               CommonUtils.$('#remoteVideo').srcObject = stream;
               CommonUtils.$('#statusText').textContent = 'Bağlandı';
-              console.log('[INDEX WebRTC] Remote video set');
             } else {
-              const audio = $('#remoteAudio');
+              const audio = CommonUtils.$('#remoteAudio');
               audio.srcObject = stream;
-              audio.play().catch(e => console.log('[INDEX WebRTC] Audio autoplay:', e));
-              console.log('[INDEX WebRTC] Remote audio set');
+              audio.play().catch(e => console.log('Audio autoplay:', e));
             }
           };
 
           this.pc.onicecandidate = async (event) => {
             if (event.candidate) {
-              console.log('[INDEX WebRTC] ICE candidate:', event.candidate.type);
-              await this.sendSignal('ice-candidate', {candidate: event.candidate});
-            } else {
-              console.log('[INDEX WebRTC] ICE gathering complete');
+              await this.sendSignal('ice', { candidate: event.candidate });
             }
           };
 
           this.pc.onconnectionstatechange = () => {
-            console.log('[INDEX WebRTC] Connection state:', this.pc.connectionState);
+            console.log('[CustomerCall] Connection state:', this.pc.connectionState);
             if (this.pc.connectionState === 'connected') {
-              console.log('[INDEX WebRTC] ✅ Connection established!');
-              Notifications.success('Bağlantı kuruldu!');
+              this.hideLoading();
+              CommonUtils.Notifications.success('Bağlantı kuruldu!');
               this.startTimer();
               this.startQualityMonitoring();
             }
           };
 
-          console.log('[INDEX WebRTC] Creating offer...');
+          console.log('[CustomerCall] Creating offer...');
           const offer = await this.pc.createOffer({
             offerToReceiveAudio: true,
             offerToReceiveVideo: true
           });
           
-          // Apply Opus optimization
+          // Apply SDP optimizations
           let sdp = offer.sdp;
-          if (typeof WebRTCConfig !== 'undefined' && WebRTCHelpers.applyOpusSettings) {
-            sdp = WebRTCHelpers.applyOpusSettings(sdp, {
-              maxaveragebitrate: 96000,
-              stereo: 0,
-              useinbandfec: 1,
-              usedtx: 1,
-              maxplaybackrate: 48000
-            });
-          }
-          
-          // Prefer VP9 codec for better quality
-          if (typeof WebRTCConfig !== 'undefined' && WebRTCHelpers.preferCodec) {
-            sdp = WebRTCHelpers.preferCodec(sdp, 'VP9', 'video');
+          if (typeof WebRTCHelpers !== 'undefined') {
+            if (WebRTCHelpers.applyOpusSettings) {
+              sdp = WebRTCHelpers.applyOpusSettings(sdp, {
+                maxaveragebitrate: 128000,
+                stereo: 1,
+                useinbandfec: 1,
+                usedtx: 1,
+                maxplaybackrate: 48000
+              });
+            }
+            
+            if (WebRTCHelpers.preferCodec) {
+              sdp = WebRTCHelpers.preferCodec(sdp, 'VP9', 'video');
+            }
           }
           
           await this.pc.setLocalDescription({type: 'offer', sdp});
-          console.log('[INDEX WebRTC] Sending optimized offer to ADMIN');
           await this.sendSignal('offer', {offer: {type: 'offer', sdp}});
           this.pollSignals();
-        } catch (err) { console.error('[INDEX WebRTC] Init error:', err); Notifications.retry('Bağlantı hatası', () => this.startCall()); } else {
-            let errorMessage = 'Kamera/mikrofon erişimi reddedildi';
-            if (err.name === 'NotAllowedError') {
-              errorMessage = 'Kamera/mikrofon izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
-            } else if (err.name === 'NotFoundError') {
-              errorMessage = 'Kamera/mikrofon bulunamadı. Lütfen cihazınızı kontrol edin.';
-            } else if (err.name === 'NotSupportedError') {
-              errorMessage = 'WebRTC bu tarayıcıda desteklenmiyor.';
-            }
-            
-            Notifications.error(errorMessage);
-          }
-        }
-      }
-
-      async sendSignal(type, data) {\n        try {\n          let endpoint = '';\n          switch(type) {\n            case 'offer': endpoint = '/api/webrtc-offer'; break;\n            case 'answer': endpoint = '/api/webrtc-answer'; break;\n            case 'ice-candidate': endpoint = '/api/ice-candidate'; break;\n            default: console.error('Unknown signal type:', type); return;\n          }\n          const response = await fetch(endpoint, { method: 'POST', headers: {'Content-Type': 'application/json','X-Call-ID': this.callId}, body: JSON.stringify({ ...data, callId: this.callId }) });\n          if (!response.ok) throw new Error('Signal failed: '+response.status);\n        } catch (err) {\n          console.error('[INDEX] sendSignal error:', err);\n          Notifications.retry('Sinyal gönderilemedi', () => this.sendSignal(type, data));\n        }\n      }\n          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Call-ID': this.callId
-            },
-            body: JSON.stringify({callId: this.callId, ...data})
-          });
           
-          const result = await response.json();
-          if (!result.success) {
-            console.error('Signal send failed:', result.error);
-          }
         } catch (err) {
-          console.error('Signal send error:', err);
+          this.hideLoading();
+          console.error('[CustomerCall] WebRTC init error:', err);
+          CommonUtils.Notifications.error('Bağlantı hatası');
         }
       }
 
-      async pollSignals() { intervalMs = 1000; if (this._polling) return; this._polling = true; setInterval(async () => {
-          try {
-            const res = await fetch('/api/call-status', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({callId: this.callId})
-            });
-            const data = await res.json();
-            
-            // Close durumu kontrol - admin kapat dedi
-            if (!data.success) {
-              console.log('[INDEX WebRTC] ❌ Call not found');
-              Notifications.warning('Görüşme sonlandırıldı');
-              setTimeout(() => location.reload(), 2000);
-              return;
-            }
-            
-            // Check for answer
-            const answerRes = await fetch('/api/webrtc-answer', {
-              method: 'GET',
-              headers: {'X-Call-ID': this.callId}
-            });
-            const answerData = await answerRes.json();
-            
-            if (answerData.success && answerData.answer && !this.pc.currentRemoteDescription) {
-              console.log('[INDEX WebRTC] Received answer from ADMIN');
-              await this.pc.setRemoteDescription(new RTCSessionDescription(answerData.answer));
-              this.hideLoading();
-              Notifications.success('Bağlantı kuruldu!');
-            }
-            
-            // Check for ICE candidates
-            const iceRes = await fetch('/api/ice-candidates', {
-              method: 'GET',
-              headers: {'X-Call-ID': this.callId}
-            });
-            const iceData = await iceRes.json();
+      getIceServers() {
+        if (typeof WebRTCConfig !== 'undefined') {
+          return WebRTCConfig.iceServers;
+        }
+        
+        return [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' }
+        ];
+      }
 
-            if (iceData.success && iceData.candidates && iceData.candidates.length > 0) {
-              console.log('[INDEX WebRTC] Received', iceData.candidates.length, 'ICE candidates from ADMIN');
-              for (const candidate of iceData.candidates) {
-                if (candidate && !this.addedCandidates?.has(JSON.stringify(candidate))) {
-                  try {
-                    await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
-                    if (!this.addedCandidates) this.addedCandidates = new Set();
-                    this.addedCandidates.add(JSON.stringify(candidate));
-                  } catch (err) {
-                    console.error('[INDEX WebRTC] Failed to add ICE candidate:', err);
-                  }
-                }
+      async sendSignal(type, payload) {
+        try {
+          await fetch('/api/signal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, callId: this.callId, ...payload })
+          });
+        } catch (err) {
+          console.error('[CustomerCall] sendSignal error:', err);
+        }
+      }
+
+      async pollSignals() {
+        if (!this.callId || !this.pc) return;
+
+        try {
+          const res = await fetch('/api/poll-signal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callId: this.callId })
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            if (data.answer && !this.pc.currentRemoteDescription) {
+              await this.pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+            }
+
+            if (data.ice_candidates && data.ice_candidates.length > 0) {
+              for (const candidate of data.ice_candidates) {
+                await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
               }
             }
-            
-            // Update status
-            if (data.status === 'waiting') {
-              this.showLoading('Admin bağlanıyor...');
-            } else if (data.status === 'connected') {
-              this.hideLoading();
-            }
-          } catch (err) { console.error('[INDEX WebRTC] Poll error:', err); Notifications.retry('Bağlantı kesildi', () => location.reload()); }\n        }, intervalMs);
+          }
+        } catch (err) {
+          console.error('[CustomerCall] Poll error:', err);
+        }
+
+        setTimeout(() => this.pollSignals(), 2000);
+      }
+
+      startQualityMonitoring() {
+        if (window.networkMonitor && this.pc) {
+          window.networkMonitor.startMonitoring(this.pc);
+        }
       }
 
       toggleMic() {
-        if (!this.localStream) return;
+        if (!this.localStream) return false;
         const track = this.localStream.getAudioTracks()[0];
         if (track) {
           track.enabled = !track.enabled;
-          $('#micBtn').classList.toggle('off', !track.enabled);
+          CommonUtils.$('#micBtn').classList.toggle('off', !track.enabled);
+          return track.enabled;
         }
+        return false;
       }
 
       toggleVideo() {
-        if (!this.localStream) return;
+        if (!this.localStream) return false;
         const track = this.localStream.getVideoTracks()[0];
         if (track) {
           track.enabled = !track.enabled;
-          $('#videoBtn').classList.toggle('off', !track.enabled);
+          CommonUtils.$('#videoBtn').classList.toggle('off', !track.enabled);
+          return track.enabled;
         }
+        return false;
       }
 
       toggleSpeaker() {
-        const audio = $('#remoteAudio');
+        const audio = CommonUtils.$('#remoteAudio');
         if (audio) {
           audio.muted = !audio.muted;
-          $('#speakerBtn').classList.toggle('off', audio.muted);
+          CommonUtils.$('#speakerBtn').classList.toggle('off', audio.muted);
         }
       }
 
       toggleProximity() {
         this.proximityMode = !this.proximityMode;
-        $('#proximityBtn').classList.toggle('active', this.proximityMode);
+        CommonUtils.$('#proximityBtn').classList.toggle('active', this.proximityMode);
         
         if (this.proximityMode) {
-          // Ahize modu: Kamera kapat, ses düşür, ekran karart
-          const videoTrack = this.localStream?.getVideoTracks()[0];
-          if (videoTrack) {
-            videoTrack.enabled = false;
-            $('#videoBtn').classList.add('off');
-          }
-          
-          const audio = $('#remoteAudio');
-          if (audio) {
-            audio.volume = 0.5; // Ses seviyesini düşür
-          }
-          
-          $('.video-container').style.filter = 'brightness(0.3)';
-          $('#proximityBtn').setAttribute('data-label', 'Hoparlör Modu');
-          Notifications.info('Ahize modu aktif - Telefonu kulağınıza götürün');
+          CommonUtils.$('#videoBtn').classList.add('off');
+          const audio = CommonUtils.$('#remoteAudio');
+          if (audio) audio.volume = 0.3;
+          CommonUtils.$('.video-container').style.filter = 'brightness(0.3)';
+          CommonUtils.$('#proximityBtn').setAttribute('data-label', 'Hoparlör Modu');
         } else {
-          // Hoparlör modu: Normal ayarlara dön
-          const videoTrack = this.localStream?.getVideoTracks()[0];
-          if (videoTrack) {
-            videoTrack.enabled = true;
-            $('#videoBtn').classList.remove('off');
-          }
-          
-          const audio = $('#remoteAudio');
-          if (audio) {
-            audio.volume = 1.0;
-          }
-          
-          $('.video-container').style.filter = 'none';
-          $('#proximityBtn').setAttribute('data-label', 'Ahize Modu');
-          Notifications.info('Hoparlör modu aktif');
+          CommonUtils.$('#videoBtn').classList.remove('off');
+          const audio = CommonUtils.$('#remoteAudio');
+          if (audio) audio.volume = 1.0;
+          CommonUtils.$('.video-container').style.filter = 'none';
+          CommonUtils.$('#proximityBtn').setAttribute('data-label', 'Ahize Modu');
         }
       }
 
       toggleFullscreen() {
-        const container = $('.video-container');
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-          if (container.requestFullscreen) {
-            container.requestFullscreen().catch(() => {});
-          } else if (container.webkitRequestFullscreen) {
-            container.webkitRequestFullscreen().catch(() => {});
-          }
-          $('#fullscreenBtn').classList.add('active');
+        const container = CommonUtils.$('.video-container');
+        if (!document.fullscreenElement) {
+          container.requestFullscreen();
+          CommonUtils.$('#fullscreenBtn').classList.add('active');
         } else {
-          if (document.exitFullscreen) {
-            document.exitFullscreen().catch(() => {});
-          } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen().catch(() => {});
-          }
-          $('#fullscreenBtn').classList.remove('active');
+          document.exitFullscreen();
+          CommonUtils.$('#fullscreenBtn').classList.remove('active');
         }
-      }
-
-      initDragging() {
-        const pip = $('#pipCamera');
-        if (!pip) return;
-        
-        let dragging = false, offsetX = 0, offsetY = 0;
-        
-        pip.addEventListener('mousedown', (e) => {
-          dragging = true;
-          const rect = pip.getBoundingClientRect();
-          offsetX = e.clientX - rect.left;
-          offsetY = e.clientY - rect.top;
-          e.stopPropagation();
-        });
-        
-        document.addEventListener('mousemove', (e) => {
-          if (!dragging) return;
-          const containerRect = $('.video-container').getBoundingClientRect();
-          let left = e.clientX - containerRect.left - offsetX;
-          let top = e.clientY - containerRect.top - offsetY;
-          left = Math.max(0, Math.min(left, containerRect.width - pip.offsetWidth));
-          top = Math.max(0, Math.min(top, containerRect.height - pip.offsetHeight));
-          pip.style.left = left + 'px';
-          pip.style.top = top + 'px';
-          pip.style.right = 'auto';
-        });
-        
-        document.addEventListener('mouseup', () => dragging = false);
-        
-        pip.addEventListener('touchstart', (e) => {
-          dragging = true;
-          const touch = e.touches[0];
-          const rect = pip.getBoundingClientRect();
-          offsetX = touch.clientX - rect.left;
-          offsetY = touch.clientY - rect.top;
-          e.stopPropagation();
-        }, {passive: true});
-        
-        document.addEventListener('touchmove', (e) => {
-          if (!dragging) return;
-          const touch = e.touches[0];
-          const containerRect = $('.video-container').getBoundingClientRect();
-          let left = touch.clientX - containerRect.left - offsetX;
-          let top = touch.clientY - containerRect.top - offsetY;
-          left = Math.max(0, Math.min(left, containerRect.width - pip.offsetWidth));
-          top = Math.max(0, Math.min(top, containerRect.height - pip.offsetHeight));
-          pip.style.left = left + 'px';
-          pip.style.top = top + 'px';
-          pip.style.right = 'auto';
-        }, {passive: true});
-        
-        document.addEventListener('touchend', () => dragging = false);
       }
 
       startTimer() {
         this.callStartTime = Date.now();
-        setInterval(() => {
-          const timer = $('#timer');
-          if (!timer) return;
-          
+        this.timerInterval = setInterval(() => {
           const elapsed = Math.floor((Date.now() - this.callStartTime) / 1000);
-          const mins = Math.floor(elapsed / 60);
-          const secs = elapsed % 60;
-          timer.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+          const minutes = Math.floor(elapsed / 60);
+          const seconds = elapsed % 60;
+          CommonUtils.$('#timer').textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         }, 1000);
       }
 
       showCallScreen() {
-        const welcomeScreen = $('#welcomeScreen');
-        const callScreen = $('#callScreen');
-        
-        if (!welcomeScreen || !callScreen) {
-          console.error('Screen elements not found');
-          return;
-        }
-        
-        welcomeScreen.classList.add('hidden');
-        callScreen.classList.remove('hidden');
+        CommonUtils.$('#welcomeScreen').classList.add('hidden');
+        CommonUtils.$('#timer').classList.remove('hidden');
       }
 
-      showLoading(text) {
-        const overlay = $('#loadingOverlay');
-        const loadingText = document.querySelector('.loading-text');
-        if (overlay && loadingText) {
-          loadingText.textContent = text || 'Bağlanıyor...';
-          overlay.classList.remove('hidden');
-        }
+      showLoading(message) {
+        CommonUtils.$('#loadingText').textContent = message;
+        CommonUtils.$('#loadingOverlay').classList.remove('hidden');
       }
 
       hideLoading() {
-        const overlay = $('#loadingOverlay');
-        if (overlay) overlay.classList.add('hidden');
-      }
-
-      async detectNetworkQuality() {\n        if (window.WebRTCHelpers && typeof WebRTCHelpers.detectNetworkQuality === 'function') {\n          return await WebRTCHelpers.detectNetworkQuality();\n        }\n        return 'good';\n      }\n} catch (err) {
-          console.log('[INDEX WebRTC] Network detection failed, using auto');
-        }
-        return 'auto';
-      }
-
-      getOptimalConstraints(quality = 'good') {\n        if (window.WebRTCHelpers && typeof WebRTCHelpers.getOptimalConstraints === 'function') {\n          return WebRTCHelpers.getOptimalConstraints(quality);\n        }\n        return { audio: true, video: true };\n      }\n,
-              video: {
-                width: {ideal: 640, max: 1280},
-                height: {ideal: 480, max: 720},
-                frameRate: {ideal: 24, max: 30},
-                facingMode: 'user'
-              }
-            };
-          } else {
-            // iOS
-            return {
-              audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-                sampleRate: 48000
-              },
-              video: {
-                width: {ideal: 1280},
-                height: {ideal: 720},
-                frameRate: {ideal: 30},
-                facingMode: 'user'
-              }
-            };
-          }
-        }
-        
-        // Desktop - High quality
-        const profiles = {
-          low: {
-            audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000},
-            video: {width: {ideal: 640}, height: {ideal: 480}, frameRate: {ideal: 15}}
-          },
-          medium: {
-            audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000},
-            video: {width: {ideal: 1280}, height: {ideal: 720}, frameRate: {ideal: 24}}
-          },
-          high: {
-            audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000},
-            video: {width: {ideal: 1920}, height: {ideal: 1080}, frameRate: {ideal: 30}}
-          },
-          auto: {
-            audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000},
-            video: {width: {ideal: 1280}, height: {ideal: 720}, frameRate: {ideal: 30}}
-          }
-        };
-        
-        return profiles[quality] || profiles.auto;
-      }
-
-      startQualityMonitoring() {
-        if (this.qualityInterval) clearInterval(this.qualityInterval);
-        
-        this.qualityInterval = setInterval(async () => {
-          if (!this.pc) return;
-          
-          try {
-            const stats = await this.pc.getStats();
-            let packetsLost = 0;
-            let packetsReceived = 0;
-            let bytesReceived = 0;
-            let jitter = 0;
-            
-            stats.forEach(report => {
-              if (report.type === 'inbound-rtp') {
-                packetsLost += report.packetsLost || 0;
-                packetsReceived += report.packetsReceived || 0;
-                bytesReceived += report.bytesReceived || 0;
-                jitter += report.jitter || 0;
-              }
-            });
-            
-            const lossRate = packetsReceived > 0 ? (packetsLost / packetsReceived) * 100 : 0;
-            
-            // Auto quality adjustment
-            if (lossRate > 5) {
-              console.log('[INDEX WebRTC] High packet loss detected:', lossRate.toFixed(2) + '%');
-              this.adjustQuality('down');
-            } else if (lossRate < 1 && bytesReceived > 1000000) {
-              this.adjustQuality('up');
-            }
-          } catch (err) {
-            console.error('[INDEX WebRTC] Quality monitoring error:', err);
-          }
-        }, 5000);
-      }
-
-      adjustQuality(direction) {
-        if (!this.pc || !this.localStream) return;
-        
-        const videoTrack = this.localStream.getVideoTracks()[0];
-        if (!videoTrack) return;
-        
-        const sender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (!sender) return;
-        
-        const params = sender.getParameters();
-        if (!params.encodings || params.encodings.length === 0) {
-          params.encodings = [{}];
-        }
-        
-        const currentBitrate = params.encodings[0].maxBitrate || 2500000;
-        
-        if (direction === 'down') {
-          params.encodings[0].maxBitrate = Math.max(250000, currentBitrate * 0.7);
-          console.log('[INDEX WebRTC] Reducing bitrate to:', params.encodings[0].maxBitrate);
-        } else if (direction === 'up') {
-          params.encodings[0].maxBitrate = Math.min(2500000, currentBitrate * 1.3);
-          console.log('[INDEX WebRTC] Increasing bitrate to:', params.encodings[0].maxBitrate);
-        }
-        
-        sender.setParameters(params).catch(err => {
-          console.error('[INDEX WebRTC] Failed to adjust quality:', err);
-        });
+        CommonUtils.$('#loadingOverlay').classList.add('hidden');
       }
 
       async endCall() {
-        // Heartbeat'i durdur
-        if (this.heartbeatInterval) {
-          clearInterval(this.heartbeatInterval);
-          this.heartbeatInterval = null;
-        }
-        
-        if (this.qualityInterval) {
-          clearInterval(this.qualityInterval);
-          this.qualityInterval = null;
-        }
-        
-        // Backend'e çağrı sonlandırıldı bilgisi gönder
-        if (this.callId) {
-          try {
-            await fetch('/api/end-call', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({callId: this.callId})
-            });
-          } catch (err) {
-            console.error('End call error:', err);
-          }
+        if (this.timerInterval) {
+          clearInterval(this.timerInterval);
         }
         
         if (this.pc) {
           this.pc.close();
-          this.pc = null;
         }
+        
         if (this.localStream) {
           this.localStream.getTracks().forEach(track => track.stop());
-          this.localStream = null;
         }
-        location.reload();
+        
+        this.showWelcomeScreen();
+      }
+
+      showWelcomeScreen() {
+        CommonUtils.$('#welcomeScreen').classList.remove('hidden');
+        CommonUtils.$('#timer').classList.add('hidden');
+        CommonUtils.$('#nameInput').value = '';
+        CommonUtils.$('#startBtn').disabled = true;
       }
     }
-    
-    function showPermissionWarning() {
-      const warningDiv = document.createElement('div');
-      warningDiv.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(244, 67, 54, 0.95);
-        color: white;
-        padding: 20px;
-        border-radius: 15px;
-        z-index: 10000;
-        text-align: center;
-        max-width: 90%;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-      `;
-      warningDiv.innerHTML = `
-        <h3>🚫 İZİNLER REDDEDİLDİ!</h3>
-        <p><strong>Müşteri Panel Çözümü:</strong></p>
-        <p>1️⃣ Tarayıcı adres çubuğundaki 🔒 ikonuna tıklayın</p>
-        <p>2️⃣ Kamera ve Mikrofon izinlerini "İzin Ver" yapın</p>
-        <p>3️⃣ Sayfayı yenileyin</p>
-        <button onclick="location.reload()" style="background: white; color: #f44336; border: none; padding: 10px 20px; border-radius: 5px; margin-top: 10px; cursor: pointer;">
-          🔄 Sayfayı Yenile
-        </button>
-        <button onclick="this.parentElement.remove()" style="background: #666; color: white; border: none; padding: 10px 20px; border-radius: 5px; margin-top: 10px; margin-left: 10px; cursor: pointer;">
-          ❌ Kapat
-        </button>
-      `;
-      document.body.appendChild(warningDiv);
-    }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      window.customerCall = new CustomerCall();
-    });
-
-    // Service Worker Registration
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/sw.js')
-          .then((registration) => {
-            console.log('[PWA] Service Worker registered:', registration.scope);
-          })
-          .catch((error) => {
-            console.log('[PWA] Service Worker registration failed:', error);
-          });
-      });
-    }
-
-    // PWA Install Prompt kaldırıldı (istek üzerine)
-    // Önceden burada 'Uygulamayı Yükle' butonu oluşturuluyordu.
-
-    // Mobile-specific optimizations
-    if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-      document.body.classList.add('mobile-device');
-      
-      // Prevent zoom on input focus (iOS)
-      const inputs = document.querySelectorAll('input');
-      inputs.forEach(input => {
-        input.addEventListener('focus', () => {
-          if (window.innerWidth < 768) {
-            document.querySelector('meta[name="viewport"]').setAttribute('content', 
-              'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-          }
-        });
-      });
-    }
-
-    // iOS Safari specific fixes
-    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-      // Fix iOS Safari viewport height
-      const setVH = () => {
-        const vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
-      };
-      
-      setVH();
-      window.addEventListener('resize', setVH);
-      window.addEventListener('orientationchange', () => {
-        setTimeout(setVH, 100);
-      });
-    }
-
-    // Mobile WebRTC optimizations
-    const mobileWebRTCOptions = {
-      video: {
-        width: { ideal: 640, max: 1280 },
-        height: { ideal: 480, max: 720 },
-        frameRate: { ideal: 15, max: 30 },
-        facingMode: 'user'
-      },
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        sampleRate: 44100
-      }
-    };
-
-    // Android Chrome specific optimizations
-    if (/Android/.test(navigator.userAgent)) {
-      mobileWebRTCOptions.video.width = { ideal: 480, max: 640 };
-      mobileWebRTCOptions.video.height = { ideal: 360, max: 480 };
-      mobileWebRTCOptions.video.frameRate = { ideal: 15, max: 20 };
-    }
-
-    // iOS Safari specific optimizations
-    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-      mobileWebRTCOptions.video.width = { ideal: 640, max: 1280 };
-      mobileWebRTCOptions.video.height = { ideal: 480, max: 720 };
-      mobileWebRTCOptions.video.frameRate = { ideal: 15, max: 25 };
-    }
-
-    // Override WebRTC constraints for mobile
-    window.mobileWebRTCOptions = mobileWebRTCOptions;
-
-    // Initialize Enhanced Quality Systems for Index
+    // Initialize Enhanced Quality Systems
     async function initializeEnhancedSystems() {
       try {
-        // Initialize audio processing
         if (window.AudioProcessor) {
           window.audioProcessor = new AudioProcessor();
           await window.audioProcessor.initialize();
@@ -1101,25 +628,21 @@
           await window.audioLevelManager.initialize();
         }
 
-        // Initialize video quality management
         if (window.VideoQualityManager) {
           window.videoQualityManager = new VideoQualityManager();
           await window.videoQualityManager.initialize();
         }
 
-        // Initialize network monitoring
         if (window.NetworkMonitor) {
           window.networkMonitor = new NetworkMonitor();
           await window.networkMonitor.initialize();
         }
 
-        // Initialize mobile optimization
         if (window.MobileOptimizer) {
           window.mobileOptimizer = new MobileOptimizer();
           await window.mobileOptimizer.initialize();
         }
 
-        // Initialize battery optimization
         if (window.BatteryOptimizer) {
           window.batteryOptimizer = new BatteryOptimizer();
           await window.batteryOptimizer.initialize();
@@ -1132,118 +655,10 @@
     }
 
     // Initialize when page loads
-    document.addEventListener('DOMContentLoaded', initializeEnhancedSystems);
-
-    // Touch gestures for mobile
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchEndX = 0;
-    let touchEndY = 0;
-
-    document.addEventListener('touchstart', (e) => {
-      touchStartX = e.changedTouches[0].screenX;
-      touchStartY = e.changedTouches[0].screenY;
-    });
-
-    document.addEventListener('touchend', (e) => {
-      touchEndX = e.changedTouches[0].screenX;
-      touchEndY = e.changedTouches[0].screenY;
-      handleSwipe();
-    });
-
-    function handleSwipe() {
-      const deltaX = touchEndX - touchStartX;
-      const deltaY = touchEndY - touchStartY;
-      const minSwipeDistance = 50;
-
-      // Horizontal swipe
-      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
-        if (deltaX > 0) {
-          // Swipe right - show controls
-          console.log('[Mobile] Swipe right detected');
-          const controls = document.querySelector('.controls');
-          if (controls) {
-            controls.style.transform = 'translateY(0)';
-            controls.style.opacity = '1';
-          }
-        } else {
-          // Swipe left - hide controls
-          console.log('[Mobile] Swipe left detected');
-          const controls = document.querySelector('.controls');
-          if (controls) {
-            controls.style.transform = 'translateY(100%)';
-            controls.style.opacity = '0';
-          }
-        }
-      }
-
-      // Vertical swipe
-      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
-        if (deltaY > 0) {
-          // Swipe down - toggle fullscreen
-          console.log('[Mobile] Swipe down detected');
-          if (window.customerCall && window.customerCall.toggleFullscreen) {
-            window.customerCall.toggleFullscreen();
-          }
-        }
-      }
-    }
-
-    // Double tap to toggle video
-    let lastTap = 0;
-    document.addEventListener('touchend', (e) => {
-      const currentTime = new Date().getTime();
-      const tapLength = currentTime - lastTap;
-      
-      if (tapLength < 500 && tapLength > 0) {
-        // Double tap detected
-        console.log('[Mobile] Double tap detected');
-        if (window.customerCall && window.customerCall.toggleVideo) {
-          window.customerCall.toggleVideo();
-        }
-      }
-      lastTap = currentTime;
-    });
-
-    // Long press to toggle mic
-    let longPressTimer;
-    document.addEventListener('touchstart', (e) => {
-      longPressTimer = setTimeout(() => {
-        console.log('[Mobile] Long press detected');
-        if (window.customerCall && window.customerCall.toggleMic) {
-          window.customerCall.toggleMic();
-        }
-      }, 800);
-    });
-
-    document.addEventListener('touchend', () => {
-      clearTimeout(longPressTimer);
-    });
-
-    document.addEventListener('touchmove', () => {
-      clearTimeout(longPressTimer);
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeEnhancedSystems();
+      window.customerCall = new CustomerCall();
     });
   </script>
-  <!-- Enhanced Quality Systems Scripts -->
-  <script src="/static/webrtc-config.js"></script>
-  <script src="/static/audio-processor.js"></script>
-  <script src="/static/video-quality-manager.js"></script>
-  <script src="/static/network-monitor.js"></script>
-  <script src="/static/mobile-optimizer.js"></script>
-  
-  <!-- Enhanced Quality Systems Styles -->
-  <link rel="stylesheet" href="/static/audio-level-styles.css">
-  <link rel="stylesheet" href="/static/video-quality-styles.css">
-  <link rel="stylesheet" href="/static/mobile-optimizer-styles.css">
-  </body>
+</body>
 </html>
-
-
-
-
-
-
-
-
-
-
