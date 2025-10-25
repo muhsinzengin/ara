@@ -416,15 +416,20 @@ class Handler(SimpleHTTPRequestHandler):
         
         # CORS headers
         origin = self.headers.get('Origin', '')
-        if origin in ALLOWED_ORIGINS or '*' in ALLOWED_ORIGINS:
+        host_header = self.headers.get('Host', '')
+        origin_host = urlparse(origin).netloc if origin else ''
+        
+        if origin and (origin in ALLOWED_ORIGINS or '*' in ALLOWED_ORIGINS or (origin_host == host_header)):
+            # Allow listed origins or same-origin dynamically
             self.send_header('Access-Control-Allow-Origin', origin)
         else:
-            self.send_header('Access-Control-Allow-Origin', ALLOWED_ORIGINS[0])
+            # Fallback to configured base or first allowed origin
+            fallback_origin = ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else BASE_URL
+            self.send_header('Access-Control-Allow-Origin', fallback_origin)
         
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Call-ID')
         self.send_header('Access-Control-Allow-Credentials', 'true')
-        
         # HTTPS enforcement
         if HTTPS_ENABLED:
             self.send_header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
