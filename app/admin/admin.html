@@ -1,249 +1,374 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel • Canlı Destek</title>
-    <link rel="stylesheet" href="css/admin-main.css">
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Admin Panel">
-    <meta name="msapplication-TileColor" content="#1e40af">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel • Canlı Destek</title>
+  <link rel="stylesheet" href="css/admin-main.css" />
+  <link rel="stylesheet" href="css/admin-codec.css" />
+  <link rel="stylesheet" href="css/admin-components.css" />
+  <link rel="stylesheet" href="css/admin-mobile.css" />
+  <link rel="stylesheet" href="css/admin-modals.css" />
+  <link rel="stylesheet" href="css/admin-theme.css" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Admin Panel" />
+  <meta name="msapplication-TileColor" content="#1e40af" />
 </head>
 <body>
-    <!-- 🔐 OTP Authentication Screen -->
-    <div id="otpScreen" class="auth-screen">
-        <div class="auth-container">
-            <div class="auth-card">
-                <div class="auth-header">
-                    <div class="auth-logo">👨‍💼</div>
-                    <h1 class="auth-title">Admin Girişi</h1>
-                    <p class="auth-subtitle">Güvenli erişim için OTP kodu alın</p>
-                </div>
-                
-                <div class="auth-content">
-                    <div id="requestOtpSection" class="auth-section">
-                        <button id="requestOtpBtn" class="btn btn-primary btn-large">
-                            <span class="btn-icon">📱</span>
-                            <span class="btn-text">OTP Kod İste</span>
-                        </button>
-                    </div>
-                    
-                    <div id="otpInputSection" class="auth-section hidden">
-                        <div class="input-group">
-                            <input type="text" id="otpInput" placeholder="6 haneli kod" maxlength="6" class="input-field">
-                            <div id="otpError" class="error-message hidden"></div>
-                        </div>
-                        <button id="verifyOtpBtn" class="btn btn-success btn-large">
-                            <span class="btn-icon">🔐</span>
-                            <span class="btn-text">Giriş Yap</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
+  <!-- OTP Authentication Screen -->
+  <div id="otpScreen" class="auth-screen">
+    <div class="auth-container">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="auth-logo">🛡️</div>
+          <h1 class="auth-title">Admin Girişi</h1>
+          <p class="auth-subtitle">Güvenli erişim için OTP kodu alın</p>
         </div>
+        <div class="auth-content">
+          <div id="requestOtpSection" class="auth-section">
+            <button id="requestOtpBtn" class="btn btn-primary btn-large">
+              <span class="btn-icon">🔐</span>
+              <span class="btn-text">OTP Kod İste</span>
+            </button>
+          </div>
+          <div id="otpInputSection" class="auth-section hidden">
+            <div class="input-group">
+              <input type="text" id="otpInput" placeholder="6 haneli kod" maxlength="6" class="input-field" />
+              <div id="otpError" class="error-message hidden"></div>
+            </div>
+            <button id="verifyOtpBtn" class="btn btn-success btn-large">
+              <span class="btn-icon">✅</span>
+              <span class="btn-text">Giriş Yap</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- 📊 Main Dashboard -->
-    <div id="dashboard" class="dashboard hidden">
-        
-        <!-- 🎯 Header -->
-        <header class="header">
-            <div class="header-content">
-                <div class="header-left">
-                    <div class="brand">
-                        <div class="brand-icon">👨‍💼</div>
-                        <div class="brand-text">Admin Panel</div>
-                    </div>
-                    <div class="status-indicator">
-                        <div class="status-dot online"></div>
-                        <span class="status-text">Çevrimiçi</span>
-                    </div>
-                </div>
-                
-                <div class="header-right">
-                    <button class="btn btn-outline" onclick="window.adminPanel.logout()">
-                        <span class="btn-icon">🚪</span>
-                        <span class="btn-text">Çıkış</span>
-                    </button>
-                </div>
+  <!-- Main Dashboard -->
+  <div id="dashboardScreen" class="dashboard hidden">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="header-left">
+          <div class="brand">
+            <div class="brand-icon">🛠️</div>
+            <div class="brand-text">Admin Panel</div>
+          </div>
+          <div class="status-indicator">
+            <div class="status-dot online"></div>
+            <span class="status-text">Çevrimiçi</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <button class="btn btn-outline" onclick="window.adminPanel.logout()">
+            <span class="btn-icon">🚪</span>
+            <span class="btn-text">Çıkış</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Stats Cards -->
+      <section class="stats-section">
+        <div class="stats-grid">
+          <div class="stat-card stat-card-primary">
+            <div class="stat-icon">📞</div>
+            <div class="stat-content">
+              <div class="stat-value" id="lblActive">0</div>
+              <div class="stat-label">Aktif Çağrılar</div>
             </div>
-        </header>
+          </div>
 
-        <!-- 📱 Main Content -->
-        <main class="main-content">
-            
-            <!-- 📊 Stats Cards -->
-            <section class="stats-section">
-                <div class="stats-grid">
-                    <div class="stat-card stat-card-primary">
-                        <div class="stat-icon">📞</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="lblActive">0</div>
-                            <div class="stat-label">Aktif Çağrılar</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card stat-card-secondary">
-                        <div class="stat-icon">⏳</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="lblQueue">0</div>
-                            <div class="stat-label">Kuyruk</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card stat-card-success">
-                        <div class="stat-icon">📈</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="todayCalls">0</div>
-                            <div class="stat-label">Bugün</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card stat-card-info">
-                        <div class="stat-icon">📊</div>
-                        <div class="stat-content">
-                            <div class="stat-value" id="weekCalls">0</div>
-                            <div class="stat-label">Bu Hafta</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 🎛️ Control Panel -->
-            <section class="control-section">
-                <div class="control-card">
-                    <div class="card-header">
-                        <h3 class="card-title">🎛️ Kontrol Paneli</h3>
-                    </div>
-                    <div class="card-content">
-                        <div class="control-grid">
-                            <div class="control-item">
-                                <label class="control-label">Otomatik Kabul</label>
-                                <div class="toggle-switch">
-                                    <input type="checkbox" id="autoAcceptToggle">
-                                    <span class="toggle-slider"></span>
-                                </div>
-                            </div>
-                            
-                            <div class="control-buttons">
-                                <button class="btn btn-danger btn-small" onclick="window.adminPanel.clearActiveCalls()">
-                                    <span class="btn-icon">🗑️</span>
-                                    <span class="btn-text">Temizle</span>
-                                </button>
-                                
-                                <button class="btn btn-info btn-small" onclick="window.adminPanel.refreshData()">
-                                    <span class="btn-icon">🔄</span>
-                                    <span class="btn-text">Yenile</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 📞 Active Calls -->
-            <section class="calls-section">
-                <div class="calls-card">
-                    <div class="card-header">
-                        <h3 class="card-title">📞 Aktif Görüşmeler</h3>
-                        <div class="live-indicator">
-                            <div class="live-dot"></div>
-                            <span class="live-text">Canlı</span>
-                        </div>
-                    </div>
-                    <div class="card-content">
-                        <div id="activeCallsList" class="calls-list">
-                            <div class="empty-state">
-                                <div class="empty-icon">📞</div>
-                                <div class="empty-text">Aktif çağrı yok</div>
-                                <div class="empty-subtext">Müşteri aradığında burada görünecek</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 📊 Performance Metrics -->
-            <section class="metrics-section">
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="card-header">
-                            <h4 class="card-title">⚡ Performans</h4>
-                            <div class="status-badge status-good">İyi</div>
-                        </div>
-                        <div class="card-content">
-                            <div class="metric-item">
-                                <div class="metric-label">Paket Kaybı</div>
-                                <div class="metric-bar">
-                                    <div class="metric-fill" id="perfLossBar"></div>
-                                </div>
-                                <div class="metric-value" id="perfLoss">0%</div>
-                            </div>
-                            <div class="metric-item">
-                                <div class="metric-label">Gecikme</div>
-                                <div class="metric-bar">
-                                    <div class="metric-fill" id="perfJitterBar"></div>
-                                </div>
-                                <div class="metric-value" id="perfJitter">0ms</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="card-header">
-                            <h4 class="card-title">🖥️ Sistem</h4>
-                            <div class="status-badge status-good">Sağlıklı</div>
-                        </div>
-                        <div class="card-content">
-                            <div class="metric-item">
-                                <div class="metric-label">CPU</div>
-                                <div class="metric-bar">
-                                    <div class="metric-fill" id="perfCpuBar"></div>
-                                </div>
-                                <div class="metric-value" id="perfCpu">0%</div>
-                            </div>
-                            <div class="metric-item">
-                                <div class="metric-label">Bitrate</div>
-                                <div class="metric-bar">
-                                    <div class="metric-fill" id="perfBitrateBar"></div>
-                                </div>
-                                <div class="metric-value" id="perfBitrate">0kbps</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-        </main>
-
-        <!-- 📞 Call Interface -->
-        <div id="callInterface" class="call-interface hidden">
-            <div class="call-header">
-                <div class="call-info">
-                    <div class="call-customer" id="callCustomer">Müşteri</div>
-                    <div class="call-status" id="callStatus">Bağlanıyor...</div>
-                </div>
-                <div class="call-timer" id="callTimer">00:00</div>
+          <div class="stat-card stat-card-secondary">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-content">
+              <div class="stat-value" id="lblQueue">0</div>
+              <div class="stat-label">Kuyruk</div>
             </div>
-            
-            <div class="call-video-container">
-                <video id="localVideo" autoplay muted></video>
-                <video id="remoteVideo" autoplay></video>
+          </div>
+
+          <div class="stat-card stat-card-success">
+            <div class="stat-icon">📈</div>
+            <div class="stat-content">
+              <div class="stat-value" id="todayCalls">0</div>
+              <div class="stat-label">Bugün</div>
             </div>
-            
-            <div class="call-controls">
-                <button id="fullVideoBtn" class="call-btn call-btn-video">📹</button>
-                <button id="fullMicBtn" class="call-btn call-btn-mic">🎤</button>
-                <button id="fullSpeakerBtn" class="call-btn call-btn-speaker">🔊</button>
-                <button id="fullEndBtn" class="call-btn call-btn-end">📞</button>
+          </div>
+
+          <div class="stat-card stat-card-info">
+            <div class="stat-icon">📅</div>
+            <div class="stat-content">
+              <div class="stat-value" id="weekCalls">0</div>
+              <div class="stat-label">Bu Hafta</div>
             </div>
+          </div>
+
+          <div class="stat-card stat-card-info">
+            <div class="stat-icon">🗓️</div>
+            <div class="stat-content">
+              <div class="stat-value" id="monthCalls">0</div>
+              <div class="stat-label">Bu Ay</div>
+            </div>
+          </div>
+
+          <div class="stat-card stat-card-info">
+            <div class="stat-icon">📆</div>
+            <div class="stat-content">
+              <div class="stat-value" id="yearCalls">0</div>
+              <div class="stat-label">Bu Yıl</div>
+            </div>
+          </div>
         </div>
 
-    </div>
+        <!-- KPI hedefleri (UIManager) -->
+        <div class="hidden" aria-hidden="true">
+          <span id="kActive"></span>
+          <span id="kQueue"></span>
+          <span id="kToday"></span>
+          <span id="kWeek"></span>
+          <span id="kMonth"></span>
+          <span id="kYear"></span>
+        </div>
+      </section>
 
-    <!-- Scripts -->
-    <script src="/static/common-utils.js"></script>
-    <script src="js/admin-main.js"></script>
+      <!-- Control Panel -->
+      <section class="control-section">
+        <div class="control-card">
+          <div class="card-header">
+            <h3 class="card-title">Kontrol Paneli</h3>
+          </div>
+          <div class="card-content">
+            <div class="control-grid">
+              <div class="control-item">
+                <label class="control-label">Otomatik Kabul</label>
+                <div class="toggle-switch">
+                  <input type="checkbox" id="autoAcceptToggle" />
+                  <span class="toggle-slider"></span>
+                </div>
+              </div>
+              <div class="control-buttons">
+                <button class="btn btn-info btn-small" onclick="window.adminPanel.refreshData()">
+                  <span class="btn-icon">🔄</span>
+                  <span class="btn-text">Yenile</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Panel (visible) -->
+      <section class="settings-section">
+        <div class="settings-card">
+          <div class="card-header">
+            <h3 class="card-title">Ayarlar</h3>
+          </div>
+          <div class="card-content">
+            <div class="settings-grid">
+              <div class="settings-group">
+                <h4>Ses Ayarları</h4>
+                <div class="row">
+                  <label>Mikrofon Ses</label>
+                  <input id="micVolume" type="range" min="0" max="100" value="100" />
+                  <span id="micVolumeVal">100%</span>
+                </div>
+                <div class="row">
+                  <label>Hoparlör Ses</label>
+                  <input id="speakerVolume" type="range" min="0" max="100" value="75" />
+                  <span id="speakerVolumeVal">75%</span>
+                </div>
+                <div class="row">
+                  <label>Gürültü Azaltma</label>
+                  <button id="toggleNoiseSuppression" class="toggle on">Açık</button>
+                </div>
+                <div class="row">
+                  <label>Yankı Engelleme</label>
+                  <button id="toggleEchoCancellation" class="toggle on">Açık</button>
+                </div>
+                <div class="row">
+                  <label>Otomatik Kazanç</label>
+                  <button id="toggleAutoGain" class="toggle on">Açık</button>
+                </div>
+                <div class="row">
+                  <label>Mikrofon Cihazı</label>
+                  <select id="micDevice"></select>
+                </div>
+                <div class="row">
+                  <label>Hoparlör Cihazı</label>
+                  <select id="speakerDevice"></select>
+                </div>
+              </div>
+              <div class="settings-group">
+                <h4>Codec Ayarları</h4>
+                <div class="row">
+                  <label>Mod</label>
+                  <button id="codecAuto" class="btn btn-small">Otomatik</button>
+                  <button id="codecManual" class="btn btn-small">Manuel</button>
+                </div>
+                <div class="row">
+                  <label>Kalite Profili</label>
+                  <select id="qualityProfile">
+                    <option value="auto" selected>Otomatik</option>
+                    <option value="low">Düşük</option>
+                    <option value="medium">Orta</option>
+                    <option value="high">Yüksek</option>
+                  </select>
+                </div>
+                <div class="row">
+                  <label>Bitrate</label>
+                  <input id="codecBitrate" type="range" min="6" max="128" value="64" />
+                  <span id="codecBitrateVal">64kb/s</span>
+                </div>
+                <div class="row">
+                  <label>DTX</label>
+                  <button id="toggleDTX" class="toggle on">Açık</button>
+                </div>
+                <div class="row">
+                  <label>FEC</label>
+                  <button id="toggleFEC" class="toggle on">Açık</button>
+                </div>
+                <div class="row">
+                  <label>Simulcast</label>
+                  <button id="toggleSimulcast" class="toggle">Kapalı</button>
+                </div>
+                <div class="row">
+                  <label>Donanım İvmelendirme</label>
+                  <button id="toggleHWAccel" class="toggle">Kapalı</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Active Calls -->
+      <section class="calls-section">
+        <div class="calls-card">
+          <div class="card-header">
+            <h3 class="card-title">Aktif Görüşmeler</h3>
+            <div class="live-indicator">
+              <div class="live-dot"></div>
+              <span class="live-text">Canlı</span>
+            </div>
+          </div>
+          <div class="card-content">
+            <div id="activeList" class="calls-list">
+              <div class="empty-state">
+                <div class="empty-icon">📭</div>
+                <div class="empty-text">Aktif çağrı yok</div>
+                <div class="empty-subtext">Müşteri aradığında burada görünecek</div>
+              </div>
+            </div>
+            <div id="queueList" class="queue-list hidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- History -->
+      <section class="history-section">
+        <div class="history-card">
+          <div class="card-header">
+            <h3 class="card-title">Geçmiş</h3>
+          </div>
+          <div class="card-content">
+            <div id="historyContainer" class="history-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Performance Metrics -->
+      <section class="metrics-section">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="card-header">
+              <h4 class="card-title">Performans</h4>
+              <div class="status-badge status-good">İyi</div>
+            </div>
+            <div class="card-content">
+              <div class="metric-item">
+                <div class="metric-label">Paket Kaybı</div>
+                <div class="metric-bar"><div class="metric-fill" id="perfLossBar"></div></div>
+                <div class="metric-value" id="perfLoss">0%</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-label">Gecikme</div>
+                <div class="metric-bar"><div class="metric-fill" id="perfJitterBar"></div></div>
+                <div class="metric-value" id="perfJitter">0ms</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-label">FPS</div>
+                <div class="metric-bar"><div class="metric-fill" id="perfFpsBar"></div></div>
+                <div class="metric-value" id="perfFps">0</div>
+              </div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="card-header">
+              <h4 class="card-title">Sistem</h4>
+              <div class="status-badge status-good">Sağlıklı</div>
+            </div>
+            <div class="card-content">
+              <div class="metric-item">
+                <div class="metric-label">CPU</div>
+                <div class="metric-bar"><div class="metric-fill" id="perfCpuBar"></div></div>
+                <div class="metric-value" id="perfCpu">0%</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-label">Bitrate</div>
+                <div class="metric-bar"><div class="metric-fill" id="perfBitrateBar"></div></div>
+                <div class="metric-value" id="perfBitrate">0kbps</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Call Interface -->
+    <div id="fullCallScreen" class="call-interface hidden">
+      <div class="call-header">
+        <div class="call-info">
+          <div class="call-customer" id="callCustomer">Müşteri</div>
+          <div class="call-status" id="callStatus">Bağlanıyor...</div>
+        </div>
+        <div class="call-timer" id="fullTimer">00:00</div>
+      </div>
+      <div class="call-video-container">
+        <video id="fullLocalVideo" autoplay muted></video>
+        <video id="fullRemoteVideo" autoplay></video>
+        <audio id="fullRemoteAudio" autoplay></audio>
+      </div>
+      <div class="call-controls">
+        <button id="fullVideoBtn" class="call-btn call-btn-video">🎥</button>
+        <button id="fullMicBtn" class="call-btn call-btn-mic">🎤</button>
+        <button id="fullSpeakerBtn" class="call-btn call-btn-speaker">🔊</button>
+        <button id="fullEndBtn" class="call-btn call-btn-end">⛔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Incoming Call Modal (UIManager) -->
+  <div id="incomingCallModal" class="hidden" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-title">Gelen Arama</div>
+      <div class="modal-body"><span id="incomingCallerName">Müşteri</span> arıyor…</div>
+    </div>
+  </div>
+
+  <!-- Loading overlay (WebRTCManager) -->
+  <div id="fullLoadingOverlay" class="hidden" aria-hidden="true"></div>
+
+  <!-- Scripts -->
+  <script src="/static/common-utils.js"></script>
+  <script src="/static/webrtc-helpers.js"></script>
+  <script src="js/logger.js"></script>
+  <script src="js/ui-manager.js"></script>
+  <script src="js/webrtc-manager.js"></script>
+  <script src="js/admin-main.js"></script>
 </body>
 </html>

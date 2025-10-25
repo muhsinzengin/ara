@@ -51,16 +51,7 @@ class WebRTCManager {
       }
 
       // Create peer connection with optimal config
-      const pcConfig = {
-        iceServers: (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.iceServers) ? WebRTCConfig.iceServers : [
-          {urls: 'stun:stun.l.google.com:19302'},
-          {urls: 'stun:global.stun.twilio.com:3478'}
-        ],
-        iceCandidatePoolSize: 10,
-        bundlePolicy: 'max-bundle',
-        rtcpMuxPolicy: 'require',
-        sdpSemantics: 'unified-plan'
-      };
+      const pcConfig = await WebRTCHelpers.getPeerConfig();
       
       this.pc = new RTCPeerConnection(pcConfig);
 
@@ -168,24 +159,30 @@ class WebRTCManager {
             await this.pc.setRemoteDescription(new RTCSessionDescription(data.offer));
 
             const answer = await this.pc.createAnswer();
-            
-            // Apply Opus optimization
+            // SDP modifiers from UI
+            const getMods = () => {
+              const el = (id) => document.getElementById(id);
+              return {
+                profile: (el('qualityProfile') && el('qualityProfile').value) || 'auto',
+                simulcast: !!(el('toggleSimulcast') && el('toggleSimulcast').classList.contains('on')),
+                hwAccel: !!(el('toggleHWAccel') && el('toggleHWAccel').classList.contains('on'))
+              };
+            };
+            const mods = getMods();
             let sdp = answer.sdp;
-            if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applyOpusSettings) {
-              sdp = WebRTCConfig.applyOpusSettings(sdp, {
-                maxaveragebitrate: 96000,
-                stereo: 0,
-                useinbandfec: 1,
-                usedtx: 1,
-                maxplaybackrate: 48000
-              });
+            sdp = WebRTCHelpers.applyOpusSettings(sdp, {
+              maxaveragebitrate: 96000,
+              stereo: 0,
+              useinbandfec: 1,
+              usedtx: 1,
+              maxplaybackrate: 48000
+            });
+            if (mods.profile && mods.profile !== 'auto') {
+              sdp = WebRTCHelpers.applyBitrateConstraints(sdp, mods.profile);
             }
-            
-            // Prefer VP9 codec
-            if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.preferCodec) {
-              sdp = WebRTCConfig.preferCodec(sdp, 'VP9', 'video');
-            }
-            
+            sdp = WebRTCHelpers.preferCodec(sdp, 'VP9', 'video');
+            if (mods.simulcast) { sdp = WebRTCHelpers.applySimulcast(sdp); }
+            if (mods.hwAccel) { sdp = WebRTCHelpers.enableHardwareAcceleration(sdp); }
             await this.pc.setLocalDescription({type: 'answer', sdp});
 
             console.log('[ADMIN WebRTC] Sending optimized answer to INDEX');
@@ -320,14 +317,22 @@ class WebRTCManager {
     if (this.pc && this.pc.currentLocalDescription) {
       // SDP'yi güncelle
       let sdp = this.pc.currentLocalDescription.sdp;
-
-      if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applyOpusSettings) {
-        sdp = WebRTCConfig.applyOpusSettings(sdp, {
-          maxaveragebitrate: this.codecSettings.bitrate,
-          useinbandfec: this.codecSettings.fec ? 1 : 0,
-          usedtx: this.codecSettings.dtx ? 1 : 0
-        });
+      const el = (id) => document.getElementById(id);
+      const mods = {
+        profile: (el('qualityProfile') && el('qualityProfile').value) || 'auto',
+        simulcast: !!(el('toggleSimulcast') && el('toggleSimulcast').classList.contains('on')),
+        hwAccel: !!(el('toggleHWAccel') && el('toggleHWAccel').classList.contains('on'))
+      };
+      sdp = WebRTCHelpers.applyOpusSettings(sdp, {
+        maxaveragebitrate: this.codecSettings.bitrate,
+        useinbandfec: this.codecSettings.fec ? 1 : 0,
+        usedtx: this.codecSettings.dtx ? 1 : 0
+      });
+      if (mods.profile && mods.profile !== 'auto') {
+        sdp = WebRTCHelpers.applyBitrateConstraints(sdp, mods.profile);
       }
+      if (mods.simulcast) { sdp = WebRTCHelpers.applySimulcast(sdp); }
+      if (mods.hwAccel) { sdp = WebRTCHelpers.enableHardwareAcceleration(sdp); }
 
       this.pc.setLocalDescription({ type: 'offer', sdp }).catch(err => {
         console.error('Codec settings error:', err);
@@ -365,7 +370,7 @@ class WebRTCManager {
     return false;
   }
 
-  async detectNetworkQuality() {
+  \n    if (window.WebRTCHelpers && typeof window.WebRTCHelpers.detectNetworkQuality === 'function') { return await window.WebRTCHelpers.detectNetworkQuality(); }\n
     try {
       const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
       if (connection) {
@@ -533,3 +538,7 @@ class WebRTCManager {
     console.log('[ADMIN WebRTC] Cleanup complete');
   }
 }
+
+
+
+

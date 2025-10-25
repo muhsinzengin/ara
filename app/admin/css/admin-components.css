@@ -1042,3 +1042,31 @@ select option {
 .border { border: 1px solid var(--border); }
 .shadow { box-shadow: var(--shadow); }
 .shadow-lg { box-shadow: var(--shadow-lg); }
+/* Toggle button styles */
+.toggle {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.1);
+  background: #f3f4f6;
+  color: #111827;
+  cursor: pointer;
+  user-select: none;
+  transition: all .2s ease;
+  font-size: 12px;
+}
+.toggle:hover { filter: brightness(0.98); }
+.toggle.on {
+  background: #d1fae5; /* emerald-100 */
+  border-color: #10b981; /* emerald-500 */
+  color: #065f46;
+}
+.settings-section .row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+.settings-section label { width: 160px; color: #374151; font-weight: 600; }
+.settings-section input[type="range"] { flex: 1; }
+.settings-section select { min-width: 160px; }

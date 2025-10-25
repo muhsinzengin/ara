@@ -13,6 +13,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📞</text></svg>" />
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' fill='%234CAF50' rx='32'/><text x='90' y='110' font-size='100' text-anchor='middle' fill='white'>📞</text></svg>" />
   <link rel="manifest" href="/static/manifest.json" />
+  <script src="/static/webrtc-helpers.js"></script>
   <title>Canlı Destek • Görüntülü Görüşme</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <style>
@@ -246,12 +247,7 @@
       <p class="subtitle">Görüntülü veya sesli destek alın</p>
       <div class="input-group">
         <input type="text" id="nameInput" placeholder="Adınızı girin" maxlength="50"/>
-      </div>
-      <button id="startBtn" class="start-btn" disabled>Destek Ara 📞</button>
-    </div>
-  </div>
-
-  <div id="callScreen" class="call-screen hidden">
+  </div>\r\n      <button id="startBtn" class="start-btn" disabled>Destek Ara</button>\r\n\r\n  <div id="callScreen" class="call-screen hidden">
     <div class="call-header">
       <div class="status">
         <span class="status-dot"></span>
@@ -426,7 +422,7 @@
           }
         } catch (err) {
           console.error('[INDEX] Call start error:', err);
-          Notifications.error('Bağlantı hatası: ' + err.message);
+          Notifications.retry('Bağlantı hatası', () => this.startCall());
         }
       }
 
@@ -463,12 +459,12 @@
             console.warn('[INDEX WebRTC] Not secure context, but continuing for localhost testing');
           }
           
-          // Detect network quality
-          const quality = await this.detectNetworkQuality();
+          // Detect network quality (auto)
+          const quality = await WebRTCHelpers.detectNetworkQuality();
           console.log('[INDEX WebRTC] Network quality:', quality);
           
           // Get optimal constraints
-          const constraints = this.getOptimalConstraints(quality);
+          const constraints = WebRTCHelpers.getOptimalConstraints(quality);
           console.log('[INDEX WebRTC] Using constraints:', constraints);
           
           this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -484,15 +480,7 @@
           this.hideLoading();
 
           // Create peer connection with optimal config
-          const pcConfig = {
-            iceServers: (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.iceServers) ? WebRTCConfig.iceServers : [
-              {urls: 'stun:stun.l.google.com:19302'},
-              {urls: 'stun:global.stun.twilio.com:3478'}
-            ],
-            iceCandidatePoolSize: 10,
-            bundlePolicy: 'max-bundle',
-            rtcpMuxPolicy: 'require'
-          };
+          const pcConfig = await WebRTCHelpers.getPeerConfig();
           
           this.pc = new RTCPeerConnection(pcConfig);
 
@@ -543,8 +531,8 @@
           
           // Apply Opus optimization
           let sdp = offer.sdp;
-          if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.applyOpusSettings) {
-            sdp = WebRTCConfig.applyOpusSettings(sdp, {
+          if (typeof WebRTCConfig !== 'undefined' && WebRTCHelpers.applyOpusSettings) {
+            sdp = WebRTCHelpers.applyOpusSettings(sdp, {
               maxaveragebitrate: 96000,
               stereo: 0,
               useinbandfec: 1,
@@ -554,22 +542,15 @@
           }
           
           // Prefer VP9 codec for better quality
-          if (typeof WebRTCConfig !== 'undefined' && WebRTCConfig.preferCodec) {
-            sdp = WebRTCConfig.preferCodec(sdp, 'VP9', 'video');
+          if (typeof WebRTCConfig !== 'undefined' && WebRTCHelpers.preferCodec) {
+            sdp = WebRTCHelpers.preferCodec(sdp, 'VP9', 'video');
           }
           
           await this.pc.setLocalDescription({type: 'offer', sdp});
           console.log('[INDEX WebRTC] Sending optimized offer to ADMIN');
           await this.sendSignal('offer', {offer: {type: 'offer', sdp}});
           this.pollSignals();
-        } catch (err) {
-          console.error('[INDEX WebRTC] Init error:', err);
-          this.hideLoading();
-          
-          // Show permission warning if needed
-          if (err.message && (err.message.includes('izni reddedildi') || err.message.includes('Permission denied'))) {
-            showPermissionWarning();
-          } else {
+        } catch (err) { console.error('[INDEX WebRTC] Init error:', err); Notifications.retry('Bağlantı hatası', () => this.startCall()); } else {
             let errorMessage = 'Kamera/mikrofon erişimi reddedildi';
             if (err.name === 'NotAllowedError') {
               errorMessage = 'Kamera/mikrofon izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
@@ -584,25 +565,7 @@
         }
       }
 
-      async sendSignal(type, data) {
-        try {
-          let endpoint = '';
-          switch(type) {
-            case 'offer':
-              endpoint = '/api/webrtc-offer';
-              break;
-            case 'answer':
-              endpoint = '/api/webrtc-answer';
-              break;
-            case 'ice-candidate':
-              endpoint = '/api/ice-candidate';
-              break;
-            default:
-              console.error('Unknown signal type:', type);
-              return;
-          }
-          
-          const response = await fetch(endpoint, {
+      async sendSignal(type, data) {\n        try {\n          let endpoint = '';\n          switch(type) {\n            case 'offer': endpoint = '/api/webrtc-offer'; break;\n            case 'answer': endpoint = '/api/webrtc-answer'; break;\n            case 'ice-candidate': endpoint = '/api/ice-candidate'; break;\n            default: console.error('Unknown signal type:', type); return;\n          }\n          const response = await fetch(endpoint, { method: 'POST', headers: {'Content-Type': 'application/json','X-Call-ID': this.callId}, body: JSON.stringify({ ...data, callId: this.callId }) });\n          if (!response.ok) throw new Error('Signal failed: '+response.status);\n        } catch (err) {\n          console.error('[INDEX] sendSignal error:', err);\n          Notifications.retry('Sinyal gönderilemedi', () => this.sendSignal(type, data));\n        }\n      }\n          const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -620,9 +583,7 @@
         }
       }
 
-      async pollSignals() {
-        console.log('[INDEX WebRTC] Starting signal polling...');
-        setInterval(async () => {
+      async pollSignals() { intervalMs = 1000; if (this._polling) return; this._polling = true; setInterval(async () => {
           try {
             const res = await fetch('/api/call-status', {
               method: 'POST',
@@ -659,14 +620,18 @@
               headers: {'X-Call-ID': this.callId}
             });
             const iceData = await iceRes.json();
-            
+
             if (iceData.success && iceData.candidates && iceData.candidates.length > 0) {
               console.log('[INDEX WebRTC] Received', iceData.candidates.length, 'ICE candidates from ADMIN');
               for (const candidate of iceData.candidates) {
                 if (candidate && !this.addedCandidates?.has(JSON.stringify(candidate))) {
-                  await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
-                  if (!this.addedCandidates) this.addedCandidates = new Set();
-                  this.addedCandidates.add(JSON.stringify(candidate));
+                  try {
+                    await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+                    if (!this.addedCandidates) this.addedCandidates = new Set();
+                    this.addedCandidates.add(JSON.stringify(candidate));
+                  } catch (err) {
+                    console.error('[INDEX WebRTC] Failed to add ICE candidate:', err);
+                  }
                 }
               }
             }
@@ -677,10 +642,7 @@
             } else if (data.status === 'connected') {
               this.hideLoading();
             }
-          } catch (err) {
-            console.error('[INDEX WebRTC] Poll error:', err);
-          }
-        }, 1000);
+          } catch (err) { console.error('[INDEX WebRTC] Poll error:', err); Notifications.retry('Bağlantı kesildi', () => location.reload()); }\n        }, intervalMs);
       }
 
       toggleMic() {
@@ -860,36 +822,13 @@
         if (overlay) overlay.classList.add('hidden');
       }
 
-      async detectNetworkQuality() {
-        try {
-          const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-          if (connection) {
-            const effectiveType = connection.effectiveType;
-            const downlink = connection.downlink;
-            
-            if (effectiveType === '4g' || downlink > 5) return 'high';
-            if (effectiveType === '3g' || downlink > 1.5) return 'medium';
-            return 'low';
-          }
-        } catch (err) {
+      async detectNetworkQuality() {\n        if (window.WebRTCHelpers && typeof WebRTCHelpers.detectNetworkQuality === 'function') {\n          return await WebRTCHelpers.detectNetworkQuality();\n        }\n        return 'good';\n      }\n} catch (err) {
           console.log('[INDEX WebRTC] Network detection failed, using auto');
         }
         return 'auto';
       }
 
-      getOptimalConstraints(quality) {
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        
-        if (isMobile) {
-          // Mobile optimizations
-          if (/Android/.test(navigator.userAgent)) {
-            return {
-              audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-                sampleRate: 48000
-              },
+      getOptimalConstraints(quality = 'good') {\n        if (window.WebRTCHelpers && typeof WebRTCHelpers.getOptimalConstraints === 'function') {\n          return WebRTCHelpers.getOptimalConstraints(quality);\n        }\n        return { audio: true, video: true };\n      }\n,
               video: {
                 width: {ideal: 640, max: 1280},
                 height: {ideal: 480, max: 720},
@@ -1250,3 +1189,13 @@
   </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+

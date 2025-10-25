@@ -135,23 +135,24 @@ def check_rate_limit(client_ip):
     return True
 
 def validate_input(data, required_fields=None, max_length=None):
-    """Input validation"""
+    """Input validation (lenient, relies on sanitization)"""
     if required_fields:
         for field in required_fields:
             if field not in data:
                 raise ValidationError(f"Missing required field: {field}")
-    
+
     if max_length:
         for field, value in data.items():
             if isinstance(value, str) and len(value) > max_length.get(field, 1000):
                 raise ValidationError(f"Field {field} too long")
-    
-    # XSS protection
+
+    # Do not reject typical punctuation; sanitization will escape HTML special chars
+    # Only reject raw angle brackets which may indicate attempted HTML/script injection
     for field, value in data.items():
         if isinstance(value, str):
-            if any(char in value for char in ['<', '>', '"', "'", '&']):
+            if '<' in value or '>' in value:
                 raise ValidationError(f"Invalid characters in field {field}")
-    
+
     return True
 
 def sanitize_input(text):
@@ -478,8 +479,6 @@ class Handler(SimpleHTTPRequestHandler):
                 self.serve_file('app/admin/admin.html')
             elif path == '/webrtc-test':
                 self.serve_file('webrtc-test.html')
-            elif path == '/dashboard':
-                self.serve_file('app/dashboard/dashboard.html')
             elif path.startswith('/admin/'):
                 self.serve_file('app' + path)
             elif path.startswith('/index/'):
@@ -561,6 +560,24 @@ class Handler(SimpleHTTPRequestHandler):
             # System metrics
             metrics = get_system_metrics()
             self.send_json({'success': True, 'metrics': metrics})
+        elif path == '/api/ice-servers':
+            # Dynamic ICE/TURN config from env
+            stun_list = [
+                { 'urls': 'stun:stun.l.google.com:19302' },
+                { 'urls': 'stun:stun1.l.google.com:19302' },
+                { 'urls': 'stun:stun2.l.google.com:19302' },
+                { 'urls': 'stun:global.stun.twilio.com:3478' },
+            ]
+            ice_servers = list(stun_list)
+            turn_urls = os.getenv('TURN_URLS')  # comma separated
+            turn_user = os.getenv('TURN_USERNAME')
+            turn_pass = os.getenv('TURN_PASSWORD') or os.getenv('TURN_CREDENTIAL')
+            if turn_urls and turn_user and turn_pass:
+                for url in turn_urls.split(','):
+                    url = url.strip()
+                    if url:
+                        ice_servers.append({ 'urls': url, 'username': turn_user, 'credential': turn_pass })
+            self.send_json({'success': True, 'iceServers': ice_servers})
         
         elif path == '/api/admin-stats':
             # Admin panel için istatistikler
@@ -1056,8 +1073,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json(response)
         
         elif path == '/api/update-call-status':
-            if not self.check_admin_auth():
-                self.send_json({'success': False, 'error': 'Unauthorized'})
+            if not self.require_admin_auth():
                 return
             call_id = data.get('callId')
             if call_id in active_calls:
@@ -1067,8 +1083,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json({'success': False})
         
         elif path == '/api/remove-user-activity':
-            if not self.check_admin_auth():
-                self.send_json({'success': False, 'error': 'Unauthorized'})
+            if not self.require_admin_auth():
                 return
             call_id = data.get('call_id')
             if call_id in active_calls:
@@ -1078,8 +1093,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json({'success': False})
         
         elif path == '/api/remove-multiple-activities':
-            if not self.check_admin_auth():
-                self.send_json({'success': False, 'error': 'Unauthorized'})
+            if not self.require_admin_auth():
                 return
             for call_id in data.get('call_ids', []):
                 if call_id in active_calls:
@@ -1087,15 +1101,13 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json({'success': True})
         
         elif path == '/api/clear-all-activities':
-            if not self.check_admin_auth():
-                self.send_json({'success': False, 'error': 'Unauthorized'})
+            if not self.require_admin_auth():
                 return
             active_calls.clear()
             self.send_json({'success': True})
         
         elif path == '/api/clear-history':
-            if not self.check_admin_auth():
-                self.send_json({'success': False, 'error': 'Unauthorized'})
+            if not self.require_admin_auth():
                 return
             with data_lock:
                 call_logs.clear()
@@ -1103,8 +1115,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json({'success': True, 'message': 'Gecmis temizlendi'})
         
         elif path == '/api/clear-active-calls':
-            if not self.check_admin_auth():
-                self.send_json({'success': False, 'error': 'Unauthorized'})
+            if not self.require_admin_auth():
                 return
             with data_lock:
                 active_calls.clear()
@@ -1120,8 +1131,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json({'success': False, 'error': 'Call not found'})
         
         elif path == '/api/hold-call':
-            if not self.check_admin_auth():
-                self.send_json({'success': False, 'error': 'Unauthorized'})
+            if not self.require_admin_auth():
                 return
             call_id = data.get('callId')
             if call_id in active_calls:
@@ -1133,8 +1143,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self.send_json({'success': False})
         
         elif path == '/api/close-call':
-            if not self.check_admin_auth():
-                self.send_json({'success': False, 'error': 'Unauthorized'})
+            if not self.require_admin_auth():
                 return
             call_id = data.get('callId')
             if remove_call_from_active(call_id, 'closed_by_admin'):
@@ -1226,3 +1235,14 @@ Dashboard: {BASE_URL}/dashboard
             logger.info(f"- Aktif Session: {len(admin_sessions)}")
             logger.info(f"- Aktif Arama: {len(active_calls)}")
         logger.info("Gule gule!")
+
+    def require_admin_auth(self) -> bool:
+        """Helper: Ensure admin auth, send unauthorized automatically"""
+        try:
+            if not self.check_admin_auth():
+                self.send_json({'success': False, 'error': 'Unauthorized'})
+                return False
+            return True
+        except Exception:
+            self.send_json({'success': False, 'error': 'Unauthorized'})
+            return False

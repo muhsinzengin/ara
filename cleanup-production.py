@@ -72,22 +72,16 @@ class ProductionCleanup:
         print("\n[*] Cleaning backup files...")
         
         backup_files = [
+            # Legacy/backup html
             'app/admin/admin-modular.html',
             'app/admin/admin_backup.html',
             'app/admin/admin_old.html',
+            # Legacy admin scripts
             'app/admin/js/admin.js',
             'app/admin/js/admin_pro.js',
-            'app/admin/js/admin-main.js',
-            'app/admin/js/webrtc-manager.js',
-            'app/admin/js/ui-manager.js',
+            # Removed/unused scripts
             'app/admin/js/storage-manager.js',
             'app/admin/js/performance-utils.js',
-            'app/admin/css/admin-main.css',
-            'app/admin/css/admin-components.css',
-            'app/admin/css/admin-modals.css',
-            'app/admin/css/style.css',
-            'app/admin/css/call-screen.css',
-            'app/admin/css/notifications.css',
             'app/admin/js/notifications.js'
         ]
         

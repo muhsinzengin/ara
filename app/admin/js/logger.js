@@ -8,6 +8,7 @@ class Logger {
       error: 3
     };
     this.currentLevel = this.levels[level] || this.levels.info;
+    this.isProd = false;
     this.logs = [];
     this.maxLogs = 1000;
   }
@@ -45,8 +46,8 @@ class Logger {
       this.logs.shift();
     }
 
-    // Console output only in development
-    if (process.env.NODE_ENV !== 'production') {
+    // Console output only in development (browser-safe)
+    if (!this.isProd) {
       const consoleMethod = level === 'debug' ? 'log' :
                            level === 'info' ? 'info' :
                            level === 'warn' ? 'warn' : 'error';
@@ -86,5 +87,10 @@ class Logger {
   }
 }
 
-// Global logger instance
-window.Logger = new Logger(process.env.NODE_ENV === 'production' ? 'warn' : 'debug');
+// Global logger instance (browser-safe env detection)
+(function(){
+  const isProd = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production');
+  const logger = new Logger(isProd ? 'warn' : 'debug');
+  logger.isProd = isProd;
+  window.Logger = logger;
+})();

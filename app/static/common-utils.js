@@ -73,7 +73,7 @@ class CommonUtils {
   /**
    * Create notification element
    */
-  static createNotification({type = 'info', title = '', message = ''}) {
+  static createNotification({type = 'info', title = '', message = '', action = null}) {
     const container = this.ensureNotificationContainer();
     const notif = document.createElement('div');
     
@@ -86,6 +86,15 @@ class CommonUtils {
       </div>
       <button class="notification-close">×</button>
     `;
+
+    // Optional action button
+    if (action && action.label && typeof action.onClick === 'function') {
+      const btn = document.createElement('button');
+      btn.className = 'notification-action';
+      btn.textContent = action.label;
+      btn.onclick = (e) => { e.stopPropagation(); try { action.onClick(); } finally { this.removeNotification(notif); } };
+      notif.querySelector('.notification-content').appendChild(btn);
+    }
     
     // Close button functionality
     notif.querySelector('.notification-close').onclick = () => {
@@ -139,7 +148,10 @@ class CommonUtils {
     success: (message, title = 'Başarılı') => CommonUtils.createNotification({type: 'success', title, message}),
     error: (message, title = 'Hata') => CommonUtils.createNotification({type: 'error', title, message}),
     warning: (message, title = 'Uyarı') => CommonUtils.createNotification({type: 'warning', title, message}),
-    info: (message, title = 'Bilgi') => CommonUtils.createNotification({type: 'info', title, message})
+    info: (message, title = 'Bilgi') => CommonUtils.createNotification({type: 'info', title, message}),
+    retry: (message, onRetry, title = 'Bağlantı Hatası') => CommonUtils.createNotification({
+      type: 'error', title, message, action: { label: 'Tekrar Dene', onClick: onRetry }
+    })
   };
 }
 

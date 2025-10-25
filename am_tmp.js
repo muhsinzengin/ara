@@ -12,8 +12,30 @@ const $ = (id) => {
   return element;
 };
 
+class AdminPanel {
+  constructor() {
+    this.active = new Map();
+    this.history = [];
+    this.ui = new UIManager();
+    this.webrtc = null;
+    this.intervals = [];
+    this.autoAccept = false;
+    this.pc = null;
+    this.localStream = null;
+    this.currentCallId = null;
+    this.isInCall = false;
+    this.sessionData = null;
+    this.init();
+  }
 
-  loadSettingsPlaceholder();
+  init() {
+    // Güvenli event listeners
+    this.bindEvents();
+    this.loadSession();
+    this.loadTheme();
+    this.startPolling();
+    this.loadRealData();
+  }
 
   bindEvents() {
     // OTP sistemi
@@ -91,12 +113,22 @@ const $ = (id) => {
   bindAudioSettings() {
     const micVolume = document.getElementById("micVolume");
     if (micVolume) {
-      micVolume.oninput = (e) => { this.saveSettings && this.saveSettings(); };
+      micVolume.oninput = (e) => {
+        const val = e.target.value;
+        const micVal = document.getElementById("micVolumeVal");
+        if (micVal) micVal.textContent = val + "%";
+        this.updateAudioConstraints();
+      };
     }
 
     const speakerVolume = document.getElementById("speakerVolume");
     if (speakerVolume) {
-      speakerVolume.oninput = (e) => { this.saveSettings && this.saveSettings(); };
+      speakerVolume.oninput = (e) => {
+        const val = e.target.value;
+        const spVal = document.getElementById("speakerVolumeVal");
+        if (spVal) spVal.textContent = val + "%";
+        this.updateSpeakerVolume();
+      };
     }
 
     ["toggleNoiseSuppression", "toggleEchoCancellation", "toggleAutoGain"].forEach(id => {
@@ -125,7 +157,12 @@ const $ = (id) => {
 
     const codecBitrate = document.getElementById("codecBitrate");
     if (codecBitrate) {
-      codecBitrate.oninput = (e) => { this.saveSettings && this.saveSettings(); };
+      codecBitrate.oninput = (e) => {
+        const val = e.target.value;
+        const bitrateVal = document.getElementById("codecBitrateVal");
+        if (bitrateVal) bitrateVal.textContent = val + "kb/s";
+        this.updateCodecSettings();
+      };
     }
 
     ["toggleDTX", "toggleFEC", "toggleSimulcast", "toggleHWAccel"].forEach(id => {
@@ -142,75 +179,12 @@ const $ = (id) => {
 
     const qualityProfile = document.getElementById('qualityProfile');
     if (qualityProfile) {
-      qualityProfile.onchange = () => { this.saveSettings && this.saveSettings(); };
+      qualityProfile.onchange = () => {
+        // Re-apply constraints/SDP on profile change
+        this.updateCodecSettings();
+      };
     }
   }
 
 
 
-
-// Settings persistence helpers\n  loadSettings() {
-    try {
-      const raw = localStorage.getItem("admin-settings");
-      if (!raw) return;
-      const s = JSON.parse(raw);
-      const setToggle = (id, on) => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.classList.toggle('on', !!on);
-          el.textContent = el.classList.contains('on') ? 'Açık' : 'Kapalı';
-        }
-      };
-      const setRange = (id, val, labelId) => {
-        const el = document.getElementById(id);
-        if (el && typeof val !== 'undefined') {
-          el.value = String(val);
-          if (labelId) {
-            const lbl = document.getElementById(labelId);
-            if (lbl) lbl.textContent = (id === 'codecBitrate' ? val + 'kb/s' : val + '%');
-          }
-        }
-      };
-      const setSelect = (id, val) => {
-        const el = document.getElementById(id);
-        if (el && typeof val !== 'undefined') el.value = val;
-      };
-      setRange('micVolume', s.micVolume, 'micVolumeVal');
-      setRange('speakerVolume', s.speakerVolume, 'speakerVolumeVal');
-      setToggle('toggleNoiseSuppression', s.noiseSuppression);
-      setToggle('toggleEchoCancellation', s.echoCancellation);
-      setToggle('toggleAutoGain', s.autoGainControl);
-      setSelect('micDevice', s.micDevice);
-      setSelect('speakerDevice', s.speakerDevice);
-      setSelect('qualityProfile', s.qualityProfile || 'auto');
-      setRange('codecBitrate', s.codecBitrate || 64, 'codecBitrateVal');
-      setToggle('toggleDTX', s.dtx);
-      setToggle('toggleFEC', s.fec);
-      setToggle('toggleSimulcast', s.simulcast);
-      setToggle('toggleHWAccel', s.hwAccel);
-      this.updateAudioConstraints();
-      this.updateCodecSettings();
-    } catch (e) { console.warn('Failed to load admin settings:', e); }
-  }
-  saveSettings() {
-    try {
-      const getOn = (id) => !!(document.getElementById(id)?.classList.contains('on'));
-      const getVal = (id, defv=null) => { const el = document.getElementById(id); return el ? el.value : defv; };
-      const s = {
-        micVolume: parseInt(getVal('micVolume', 100)) || 100,
-        speakerVolume: parseInt(getVal('speakerVolume', 75)) || 75,
-        noiseSuppression: getOn('toggleNoiseSuppression'),
-        echoCancellation: getOn('toggleEchoCancellation'),
-        autoGainControl: getOn('toggleAutoGain'),
-        micDevice: getVal('micDevice'),
-        speakerDevice: getVal('speakerDevice'),
-        qualityProfile: getVal('qualityProfile', 'auto'),
-        codecBitrate: parseInt(getVal('codecBitrate', 64)) || 64,
-        dtx: getOn('toggleDTX'),
-        fec: getOn('toggleFEC'),
-        simulcast: getOn('toggleSimulcast'),
-        hwAccel: getOn('toggleHWAccel')
-      };
-      localStorage.setItem('admin-settings', JSON.stringify(s));
-    } catch (e) { console.warn('Failed to save admin settings:', e); }
-  }
