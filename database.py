@@ -437,6 +437,9 @@ class DatabaseManager:
                         VALUES (?, ?)
                     ''', (setting['key'], setting['value']))
 
+# Singleton instance
+db = DatabaseManager()
+
     def _execute(self, cursor, query, params=None):
         """Unified execute helper for SQLite and Postgres.
         - Converts SQLite-style placeholders ('?') to Postgres-style ('%s') when needed.
@@ -454,6 +457,169 @@ class DatabaseManager:
                 cursor.execute(query)
             else:
                 cursor.execute(query, params)
-
-# Singleton instance
-db = DatabaseManager()
+    
+    def test_connection(self):
+        """Test database connection and return status"""
+        import time
+        start_time = time.time()
+        
+        try:
+            if self.is_postgresql:
+                # Test PostgreSQL connection
+                cursor = self.connection.cursor()
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()
+                cursor.close()
+                
+                if result and result[0] == 1:
+                    return {
+                        'status': 'connected',
+                        'type': 'postgresql',
+                        'connection_time_ms': int((time.time() - start_time) * 1000),
+                        'test_query': 'SELECT 1',
+                        'result': 'success'
+                    }
+                else:
+                    return {
+                        'status': 'error',
+                        'type': 'postgresql',
+                        'error': 'Test query failed',
+                        'connection_time_ms': int((time.time() - start_time) * 1000)
+                    }
+            else:
+                # Test SQLite connection
+                cursor = self.connection.cursor()
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()
+                cursor.close()
+                
+                if result and result[0] == 1:
+                    return {
+                        'status': 'connected',
+                        'type': 'sqlite',
+                        'connection_time_ms': int((time.time() - start_time) * 1000),
+                        'test_query': 'SELECT 1',
+                        'result': 'success'
+                    }
+                else:
+                    return {
+                        'status': 'error',
+                        'type': 'sqlite',
+                        'error': 'Test query failed',
+                        'connection_time_ms': int((time.time() - start_time) * 1000)
+                    }
+                    
+        except Exception as e:
+            return {
+                'status': 'error',
+                'type': 'unknown',
+                'error': str(e),
+                'connection_time_ms': int((time.time() - start_time) * 1000)
+            }
+    
+    def get_database_type(self):
+        """Get database type"""
+        return 'postgresql' if self.is_postgresql else 'sqlite'
+    
+    def get_database_info(self):
+        """Get detailed database information"""
+        try:
+            if self.is_postgresql:
+                cursor = self.connection.cursor()
+                cursor.execute("SELECT version()")
+                version = cursor.fetchone()[0]
+                
+                cursor.execute("SELECT current_database()")
+                db_name = cursor.fetchone()[0]
+                
+                cursor.execute("SELECT current_user")
+                user = cursor.fetchone()[0]
+                
+                cursor.close()
+                
+                return {
+                    'type': 'postgresql',
+                    'version': version,
+                    'database_name': db_name,
+                    'user': user,
+                    'host': self.connection.get_dsn_parameters().get('host', 'unknown'),
+                    'port': self.connection.get_dsn_parameters().get('port', 'unknown')
+                }
+            else:
+                cursor = self.connection.cursor()
+                cursor.execute("SELECT sqlite_version()")
+                version = cursor.fetchone()[0]
+                cursor.close()
+                
+                return {
+                    'type': 'sqlite',
+                    'version': version,
+                    'database_file': self.db_path,
+                    'file_exists': os.path.exists(self.db_path) if self.db_path else False
+                }
+        except Exception as e:
+            return {
+                'type': 'unknown',
+                'error': str(e)
+            }
+    
+    def get_table_stats(self):
+        """Get database table statistics"""
+        try:
+            if self.is_postgresql:
+                cursor = self.connection.cursor()
+                cursor.execute("""
+                    SELECT 
+                        schemaname,
+                        tablename,
+                        n_tup_ins as inserts,
+                        n_tup_upd as updates,
+                        n_tup_del as deletes,
+                        n_live_tup as live_rows,
+                        n_dead_tup as dead_rows
+                    FROM pg_stat_user_tables
+                    ORDER BY n_live_tup DESC
+                """)
+                stats = cursor.fetchall()
+                cursor.close()
+                
+                return {
+                    'type': 'postgresql',
+                    'tables': [
+                        {
+                            'schema': row[0],
+                            'table': row[1],
+                            'inserts': row[2],
+                            'updates': row[3],
+                            'deletes': row[4],
+                            'live_rows': row[5],
+                            'dead_rows': row[6]
+                        } for row in stats
+                    ]
+                }
+            else:
+                cursor = self.connection.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                tables = cursor.fetchall()
+                
+                table_stats = []
+                for table in tables:
+                    table_name = table[0]
+                    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+                    count = cursor.fetchone()[0]
+                    table_stats.append({
+                        'table': table_name,
+                        'rows': count
+                    })
+                
+                cursor.close()
+                
+                return {
+                    'type': 'sqlite',
+                    'tables': table_stats
+                }
+        except Exception as e:
+            return {
+                'type': 'unknown',
+                'error': str(e)
+            }

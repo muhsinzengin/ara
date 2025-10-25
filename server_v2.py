@@ -574,8 +574,9 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(404)
     
     def handle_api_get(self, path):
-        if path == '/api/healthz':
-            self.send_json({
+        elif path == '/api/healthz':
+            # Basic health check
+            health_data = {
                 'status': 'ok',
                 'timestamp': datetime.now().isoformat(),
                 'uptime': int(time.time() - server_start_time),
@@ -583,7 +584,70 @@ class Handler(SimpleHTTPRequestHandler):
                 'active_sessions': len(admin_sessions),
                 'active_calls': len(active_calls),
                 'version': '2.0'
-            })
+            }
+            
+            # Database health check
+            try:
+                db_manager = DatabaseManager()
+                db_status = db_manager.test_connection()
+                health_data['database'] = {
+                    'status': 'connected',
+                    'type': db_manager.get_database_type(),
+                    'connection_time_ms': db_status.get('connection_time_ms', 0),
+                    'last_check': datetime.now().isoformat()
+                }
+            except Exception as e:
+                health_data['database'] = {
+                    'status': 'error',
+                    'error': str(e),
+                    'last_check': datetime.now().isoformat()
+                }
+                health_data['status'] = 'degraded'
+            
+            self.send_json(health_data)
+        
+        elif path == '/api/database/status':
+            # Detailed database status
+            try:
+                db_manager = DatabaseManager()
+                db_info = db_manager.get_database_info()
+                db_stats = db_manager.get_table_stats()
+                
+                self.send_json({
+                    'success': True,
+                    'database': {
+                        'info': db_info,
+                        'stats': db_stats,
+                        'last_check': datetime.now().isoformat()
+                    }
+                })
+            except Exception as e:
+                self.send_json({
+                    'success': False,
+                    'error': str(e),
+                    'database': {
+                        'status': 'error',
+                        'last_check': datetime.now().isoformat()
+                    }
+                })
+        
+        elif path == '/api/database/test':
+            # Database connection test
+            try:
+                db_manager = DatabaseManager()
+                test_result = db_manager.test_connection()
+                
+                self.send_json({
+                    'success': True,
+                    'test_result': test_result,
+                    'timestamp': datetime.now().isoformat()
+                })
+            except Exception as e:
+                self.send_json({
+                    'success': False,
+                    'error': str(e),
+                    'timestamp': datetime.now().isoformat()
+                })
         
         elif path == '/api/metrics':
             # System metrics

@@ -10,6 +10,7 @@ class AdminPanel {
     this.loadSession();
     this.bindEvents();
     this.startPolling();
+    this.startDatabaseMonitoring();
   }
 
   bindEvents() {
@@ -297,6 +298,88 @@ class AdminPanel {
     CommonUtils.$('#dashboardScreen').classList.remove('hidden');
     
     console.log('Call ended');
+  }
+
+  // Database Monitoring Methods
+  async checkDatabaseStatus() {
+    try {
+      const response = await fetch('/api/database/status');
+      const data = await response.json();
+      
+      if (data.success) {
+        this.updateDatabaseStatus(data.database);
+      } else {
+        this.showDatabaseError(data.error);
+      }
+    } catch (error) {
+      this.showDatabaseError('Database bağlantı hatası: ' + error.message);
+    }
+  }
+
+  updateDatabaseStatus(dbData) {
+    const statusEl = CommonUtils.$('#dbStatus');
+    const typeEl = CommonUtils.$('#dbType');
+    const connectionTimeEl = CommonUtils.$('#dbConnectionTime');
+    const lastCheckEl = CommonUtils.$('#dbLastCheck');
+    const tableCountEl = CommonUtils.$('#dbTableCount');
+    const errorEl = CommonUtils.$('#databaseError');
+
+    // Hide error message
+    errorEl.classList.add('hidden');
+
+    // Update status
+    if (dbData.info && dbData.info.type) {
+      statusEl.textContent = 'Bağlı';
+      statusEl.className = 'status-value connected';
+      typeEl.textContent = dbData.info.type.toUpperCase();
+      
+      if (dbData.info.version) {
+        typeEl.textContent += ` (${dbData.info.version.split(' ')[0]})`;
+      }
+    } else {
+      statusEl.textContent = 'Hata';
+      statusEl.className = 'status-value error';
+      typeEl.textContent = 'Bilinmiyor';
+    }
+
+    // Update connection time
+    if (dbData.info && dbData.info.connection_time_ms) {
+      connectionTimeEl.textContent = `${dbData.info.connection_time_ms}ms`;
+    } else {
+      connectionTimeEl.textContent = '-';
+    }
+
+    // Update last check
+    lastCheckEl.textContent = new Date().toLocaleTimeString('tr-TR');
+
+    // Update table count
+    if (dbData.stats && dbData.stats.tables) {
+      tableCountEl.textContent = dbData.stats.tables.length;
+    } else {
+      tableCountEl.textContent = '-';
+    }
+  }
+
+  showDatabaseError(errorMessage) {
+    const errorEl = CommonUtils.$('#databaseError');
+    const statusEl = CommonUtils.$('#dbStatus');
+    
+    errorEl.textContent = errorMessage;
+    errorEl.classList.remove('hidden');
+    
+    statusEl.textContent = 'Hata';
+    statusEl.className = 'status-value error';
+  }
+
+  // Auto-refresh database status every 30 seconds
+  startDatabaseMonitoring() {
+    // Initial check
+    this.checkDatabaseStatus();
+    
+    // Set up interval
+    setInterval(() => {
+      this.checkDatabaseStatus();
+    }, 30000);
   }
 }
 

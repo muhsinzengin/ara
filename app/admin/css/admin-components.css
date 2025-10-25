@@ -211,9 +211,66 @@ button, .btn {
   opacity: 0.7;
 }
 
-.call-btn.active {
-  background: var(--success);
-  box-shadow: 0 0 10px rgba(5, 150, 105, 0.5);
+/* Database Status Styles */
+.database-status {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 15px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.status-item:last-child {
+  border-bottom: none;
+}
+
+.status-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+.status-value {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.9em;
+}
+
+.status-value.connected {
+  color: var(--success);
+}
+
+.status-value.error {
+  color: var(--danger);
+}
+
+.status-value.warning {
+  color: var(--warning);
+}
+
+.database-status .status-value {
+  text-align: right;
+  min-width: 100px;
+}
+
+.error-message {
+  background: var(--danger-light);
+  color: var(--danger);
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 10px;
+  font-size: 0.9em;
+  border-left: 4px solid var(--danger);
 }
 
 /* Incoming call modal */

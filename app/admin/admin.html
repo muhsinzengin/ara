@@ -167,6 +167,43 @@
         </div>
       </section>
 
+        <!-- Database Status Panel -->
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Database Durumu</h3>
+            <button class="btn btn-small" onclick="window.adminPanel.checkDatabaseStatus()">
+              <span class="btn-icon">🔍</span>
+              <span class="btn-text">Kontrol Et</span>
+            </button>
+          </div>
+          <div class="card-content">
+            <div id="databaseStatus" class="database-status">
+              <div class="status-item">
+                <span class="status-label">Durum:</span>
+                <span id="dbStatus" class="status-value">Kontrol ediliyor...</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">Tip:</span>
+                <span id="dbType" class="status-value">-</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">Bağlantı Süresi:</span>
+                <span id="dbConnectionTime" class="status-value">-</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">Son Kontrol:</span>
+                <span id="dbLastCheck" class="status-value">-</span>
+              </div>
+              <div class="status-item">
+                <span class="status-label">Tablo Sayısı:</span>
+                <span id="dbTableCount" class="status-value">-</span>
+              </div>
+            </div>
+            <div id="databaseError" class="error-message hidden"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- Settings Panel (visible) -->
       <section class="settings-section">
         <div class="settings-card">
