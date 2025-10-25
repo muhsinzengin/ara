@@ -66,22 +66,6 @@ class DatabaseManager:
                 self._connection_pool.putconn(conn)
             else:
                 conn.close()
-
-    def _execute(self, cursor, query, params=None):
-        """Unified execute helper for SQLite and Postgres.
-        Converts SQLite-style placeholders ('?') to Postgres-style ('%s') when needed.
-        """
-        if self.is_postgres:
-            normalized_query = query.replace('?', '%s')
-            if params is None:
-                cursor.execute(normalized_query)
-            else:
-                cursor.execute(normalized_query, params)
-        else:
-            if params is None:
-                cursor.execute(query)
-            else:
-                cursor.execute(query, params)
     
     def init_database(self):
         """Initialize database tables"""
@@ -452,6 +436,24 @@ class DatabaseManager:
                         INSERT OR REPLACE INTO settings (key, value)
                         VALUES (?, ?)
                     ''', (setting['key'], setting['value']))
+
+    def _execute(self, cursor, query, params=None):
+        """Unified execute helper for SQLite and Postgres.
+        - Converts SQLite-style placeholders ('?') to Postgres-style ('%s') when needed.
+        - Executes the query with optional params.
+        """
+        if self.is_postgres:
+            # Normalize placeholders to Postgres style
+            normalized_query = query.replace('?', '%s')
+            if params is None:
+                cursor.execute(normalized_query)
+            else:
+                cursor.execute(normalized_query, params)
+        else:
+            if params is None:
+                cursor.execute(query)
+            else:
+                cursor.execute(query, params)
 
 # Singleton instance
 db = DatabaseManager()
